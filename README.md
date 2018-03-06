@@ -1,23 +1,14 @@
 ## HIMA: High-dimensional Mediation Analysis
-[![GitHub release](https://img.shields.io/badge/release-v1.0.5-blue.svg)](https://github.com/YinanZheng/HIMA/releases)
+[![GitHub release](https://img.shields.io/badge/release-v1.0.6-blue.svg)](https://github.com/YinanZheng/HIMA/releases)
 
 *HIMA* is an [R](http://en.wikipedia.org/wiki/R_%28programming_language%29) package for estimating and testing high-dimensional mediation effects in genomic/epigenomic studies.
 
 ## Installation 
 
-In R console,
+HIMA is now available in R CRAN repository
 ```r
 ## Install REMP
-library(devtools)
-install_github("YinanZheng/HIMA",
-               dependencies=TRUE)
-               
-## If SSL cert verification failure
-library(RCurl)
-library(httr)
-set_config( config( ssl_verifypeer = 0L ) )
-install_github("YinanZheng/HIMA",
-               dependencies=TRUE)
+install.packages("HIMA")
 ```
 
 ##Citation:
