@@ -4,9 +4,20 @@
 \alias{hima}
 \title{High-dimensional Mediation Analysis}
 \usage{
-hima(X, Y, M, COV.XM = NULL, COV.MY = COV.XM, family = c("gaussian",
-  "binomial"), penalty = c("MCP", "SCAD", "lasso"), topN = NULL,
-  parallel = FALSE, ncore = 1, verbose = FALSE, ...)
+hima(
+  X,
+  Y,
+  M,
+  COV.XM = NULL,
+  COV.MY = COV.XM,
+  family = c("gaussian", "binomial"),
+  penalty = c("MCP", "SCAD", "lasso"),
+  topN = NULL,
+  parallel = FALSE,
+  ncore = 1,
+  verbose = FALSE,
+  ...
+)
 }
 \arguments{
 \item{X}{a vector of exposure.}
@@ -53,7 +64,7 @@ A data.frame containing mediation testing results of selected mediators.
     \item{gamma: }{coefficient estimates of exposure (X) --> outcome (Y) (total effect).}
     \item{alpha*beta: }{mediation effect.}
     \item{\% total effect: }{alpha*beta / gamma. Percentage of the mediation effect out of the total effect.}
-    \item{adjusted.p: }{statistical significance of the mediator (Bonferroni procedure).}
+    \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni procedure).}
     \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg procedure).}
 }
 }
@@ -61,8 +72,8 @@ A data.frame containing mediation testing results of selected mediators.
 \code{hima} is used to estimate and test high-dimensional mediation effects.
 }
 \examples{
-n <- 100  # sample size
-p <- 500 # the dimension of covariates
+n <- 200  # sample size
+p <- 200 # the dimension of covariates
 
 # the regression coefficients alpha (exposure --> mediators)
 alpha <- rep(0, p) 
@@ -88,11 +99,16 @@ simdat_bin = simHIMA(n, p, alpha, beta2, binaryOutcome = TRUE, seed=1029)
 # Run HIMA with MCP penalty by default
 # When Y is continuous (default)
 hima.fit <- hima(simdat_cont$X, simdat_cont$Y, simdat_cont$M, verbose = TRUE) 
-head(hima.fit)
+hima.fit
 
 # When Y is binary (should specify family)
 hima.logistic.fit <- hima(simdat_bin$X, simdat_bin$Y, simdat_bin$M, 
 family = "binomial", verbose = TRUE) 
-head(hima.logistic.fit)
+hima.logistic.fit
 
+}
+\references{
+Zhang H, Zheng Y, Zhang Z, Gao T, Joyce B, Yoon G, Zhang W, Schwartz J, Just A, Colicino E, Vokonas P, Zhao L, 
+Lv J, Baccarelli A, Hou L, Liu L. Estimating and Testing High-dimensional Mediation Effects in Epigenetic Studies. 
+Bioinformatics. 2016. DOI: 10.1093/bioinformatics/btw351. PubMed PMID: 27357171.
 }
