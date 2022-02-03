@@ -1,4 +1,4 @@
-# This is the main function for our proposed method in Cox mediation analysis
+# This is the main function for our proposed method for high-dimensional Cox mediation analysis
 #' High-dimensional mediation analysis for survival data
 #' 
 #' \code{survHIMA} is used to estimate and test high-dimensional mediation effects for survival data.
@@ -6,13 +6,13 @@
 #' @param X a vector of exposure. 
 #' @param Z a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.
 #' @param M a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns 
-#' represent variables.
+#' represent mediator variables.
 #' @param OT a vector of observed failure times.
 #' @param status a vector of censoring indicator (\code{status = 1}: uncensored; \code{status = 0}: censored)
 #' @param FDRcut FDR cutoff applied to define and select significant mediators. Default = \code{0.05}. 
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
 #' 
-#' @return A data.frame containing mediation testing results of selected mediators (FDR <\code{0.05}). 
+#' @return A data.frame containing mediation testing results of selected mediators (FDR <\code{FDPcut}). 
 #' \itemize{
 #'     \item{ID: }{index of selected significant mediator.}
 #'     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
@@ -22,13 +22,13 @@
 #'     \item{p.joint: }{joint p-value of selected significant mediator.}
 #' }
 #' 
-#' @references Zhang H, Zheng Y, Hou L, Liu L. Mediation Analysis for Survival Data with High-Dimensional Mediators. 
-#' Bioinformatics. 2021 (under review).
+#' @references Zhang H, Zheng Y, Hou L, Zheng C, Liu L. Mediation Analysis for Survival Data with High-Dimensional Mediators. 
+#' Bioinformatics. 2021. DOI: 10.1093/bioinformatics/btab564. PMID: 34343267. PMCID: PMC8570823
 #' 
 #' @examples
 #' ## Generate simulated survival data
 #' set.seed(100)
-#' n <- 100  # sample size
+#' n <- 300  # sample size
 #' p <- 100 # the dimension of mediators
 #' q <- 1   # the dimension of covariate(s)
 #' 
@@ -174,7 +174,7 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, verbose = FALSE){
   N0 <- dim(PA)[1]*dim(PA)[2]
   
   input_pvalues <- PA + matrix(runif(N0,0,10^{-10}),dim(PA)[1],2)
-  nullprop <- HDMT::null_estimation(input_pvalues,lambda=0.5)
+  nullprop <- null_estimation(input_pvalues,lambda=0.5)
   fdrcut  <- HDMT::fdr_est(nullprop$alpha00,nullprop$alpha01,nullprop$alpha10, nullprop$alpha1,nullprop$alpha2,input_pvalues,exact=0)
   
   ID_fdr <- which(fdrcut <= FDRcut)
@@ -194,6 +194,8 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, verbose = FALSE){
                            beta = beta_hat, 
                            beta_set = beta_est,
                            pvalue = P_max)
+  
+  message("Done!", "     (", Sys.time(), ")")
   
   return(out_result)
 }

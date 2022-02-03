@@ -100,8 +100,16 @@ himasis <- function(Y, M, X, COV, glm.family, modelstatement,
                                                 paste0(paste0("COV.", conf.names), collapse = "+")))))
   }
   
-  doOne <- eval(parse(text = doOneGen(paste0("try(glm(modelstatement, family = ", 
-                                             glm.family, ", data = datarun))"), "c(1,4)")))
+  if(glm.family == "gaussian")
+  {
+    doOne <- eval(parse(text = doOneGen(paste0("try(glm(modelstatement, family = ", 
+                                               glm.family, ", data = datarun))"), "c(1,4)")))
+  } else if(glm.family == "negbin") {
+    doOne <- eval(parse(text = doOneGen(paste0("try(MASS::glm.nb(modelstatement, data = datarun))"), "c(1,4)")))
+  } else {
+    stop(paste0("Screening family ", glm.family, " is not supported."))
+  }
+
   
   checkParallel(tag, parallel, ncore, verbose)
   
@@ -206,4 +214,134 @@ LDPE_func <- function(ID, X, OT, status){
   result <- c(beta_est,beta_SE)
   
   return(result)
+}
+
+
+
+# Internal function: LDPE
+# A function to estimate the proportions of the three component nulls
+# This is from HDMT package version < 1.0.4
+
+null_estimation <- function(input_pvalues, lambda = 0.5) {
+  ## input_pvalues is a matrix with 2 columns of p-values, the first column is p-value for exposure-mediator association, the second column is p-value for mediator-outcome association adjusted for exposure
+  ## lambda is the threshold for pi_{00} estimation, default 0.5
+  #check input
+  if (is.null(ncol(input_pvalues)))
+    stop("input_pvalues should be a matrix or data frame")
+  if (ncol(input_pvalues) !=2)
+    stop("inpute_pvalues should have 2 column")
+  input_pvalues <- matrix(as.numeric(input_pvalues),nrow=nrow(input_pvalues))
+  if (sum(stats::complete.cases(input_pvalues))<nrow(input_pvalues))
+    warning("input_pvalues contains NAs to be removed from analysis")
+  input_pvalues <- input_pvalues[stats::complete.cases(input_pvalues),]
+  if (!is.null(nrow(input_pvalues)) & nrow(input_pvalues)<1)
+    stop("input_pvalues doesn't have valid p-values")
+  
+  pcut <- seq(0.1,0.8,0.1) 
+  frac1 <- rep(0,8)
+  frac2 <- rep(0,8)
+  frac12<- rep(0,8)
+  for (i in 1:8) {
+    frac1[i] <- mean(input_pvalues[,1]>=pcut[i])/(1-pcut[i])
+    frac2[i] <- mean(input_pvalues[,2]>=pcut[i])/(1-pcut[i]) 
+    frac12[i]<- mean(input_pvalues[,2]>=pcut[i] & input_pvalues[,1]>=pcut[i])/(1-pcut[i])^2
+  }  
+  
+  ## use the median estimates for pi00 ##
+  
+  alpha00 <- min(frac12[pcut==lambda],1)
+  
+  ## alpha1 is the proportion of nulls for first p-value 
+  ## alpha2 is the proportion of nulls for second p-value 
+  
+  if (stats::ks.test(input_pvalues[,1],"punif",0,1,alternative="greater")$p>0.05) alpha1 <- 1 else   alpha1 <- min(frac1[pcut==lambda],1)  
+  if (stats::ks.test(input_pvalues[,2],"punif",0,1,alternative="greater")$p>0.05) alpha2 <- 1 else   alpha2 <- min(frac2[pcut==lambda],1)
+  
+  
+  if (alpha00==1) {
+    alpha01 <- 0
+    alpha10 <- 0
+    alpha11 <- 0
+  } else {    
+    if (alpha1==1  & alpha2==1) {
+      alpha01 <- 0
+      alpha10 <- 0
+      alpha11 <- 0
+      alpha00 <- 1
+    }  
+    
+    if (alpha1==1  & alpha2!=1) {
+      alpha10 <- 0
+      alpha11 <- 0
+      alpha01 <- alpha1-alpha00
+      alpha01 <- max(0,alpha01)
+      alpha00 <- 1-alpha01
+    }  
+    
+    if (alpha1!=1  & alpha2==1) {
+      alpha01 <- 0
+      alpha11 <- 0
+      alpha10 <- alpha2-alpha00
+      alpha10 <- max(0,alpha10)
+      alpha00 <- 1-alpha10
+    }  
+    
+    if (alpha1!=1  & alpha2!=1) {
+      alpha10 <- alpha2-alpha00
+      alpha10 <- max(0,alpha10)
+      alpha01 <- alpha1-alpha00
+      alpha01 <- max(0,alpha01)
+      
+      if ((1-alpha00-alpha01-alpha10)<0) {
+        alpha11 <- 0
+        alpha10 <- 1- alpha1
+        alpha01 <- 1- alpha2
+        alpha00 <- 1- alpha10 - alpha01
+      }  else {
+        alpha11 <-  1-alpha00-alpha01-alpha10
+      }  
+    }  
+  }
+  alpha.null <- list(alpha10=alpha10,alpha01=alpha01,alpha00=alpha00,alpha1=alpha1,alpha2=alpha2)
+  return(alpha.null)
+}
+
+
+
+# Internal function: DLASSO_fun
+# A function perform de-biased lasso estimator used by function "microHIMA"
+
+DLASSO_fun <- function(X,Y){
+  n <- dim(X)[1]
+  p <- dim(X)[2]
+  fit = glmnet(X, Y, alpha = 1)
+  cv.fit <- cv.glmnet(X, Y, alpha = 1)
+  beta_0 <- coef(fit, s = cv.fit$lambda.min)[2:(p+1)]
+  #
+  fit <- glmnet(X[,2:p], X[,1], alpha = 1)
+  cv.fit <- cv.glmnet(X[,2:p], X[,1], alpha = 1)
+  phi_hat <- coef(fit, s = cv.fit$lambda.min)[2:p]
+  ##
+  R <- X[,1] - X[,2:p]%*%t(t(phi_hat))
+  E <- Y - X%*%t(t(beta_0))
+  beta_1_hat <- beta_0[1] + sum(R*E)/sum(R*X[,1]) #  The de-biased lasso estimator
+  ##
+  sigma_e2 <- sum(E^2)/(n-length(which(beta_0!=0)))
+  
+  sigma_beta1_hat <- sqrt(sigma_e2)*sqrt(sum(R^2))/abs(sum(R*X[,1]))
+  
+  results <- c(beta_1_hat,sigma_beta1_hat)
+  return(results)
+}
+
+
+
+# Internal function: rdirichlet
+# A function generate random number from Dirichlet distribution.
+
+rdirichlet <- function (n = 1, alpha) 
+{
+  Gam <- matrix(0, n, length(alpha))
+  for (i in 1:length(alpha)) Gam[, i] <- stats::rgamma(n, shape = alpha[i])
+  Gam/rowSums(Gam)
 }

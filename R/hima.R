@@ -14,6 +14,10 @@
 #' \code{M ~ X} will be applied. Using different sets of covariates is allowed but this needs to be handled carefully.
 #' @param family either 'gaussian' or 'binomial', depending on the data type of outcome (\code{Y}). See 
 #' \code{\link{ncvreg}}
+#' @param screen.family either 'gaussian' (default) or 'negbin' (i.e., negative binomial). This parameter is 
+#' taking effect only when parameter \code{family = 'binomial'}. When \code{family = 'binomial'}, the screening step
+#' is based on X (exposure, independent variable) and the omic mediator (dependent variable). This is useful when
+#' handling RNA sequencing count data as mediators.   
 #' @param penalty the penalty to be applied to the model. Either 'MCP' (the default), 'SCAD', or 
 #' 'lasso'. See \code{\link{ncvreg}}.
 #' @param topN an integer specifying the number of top markers from sure independent screening. 
@@ -40,7 +44,7 @@
 #' 
 #' @references Zhang H, Zheng Y, Zhang Z, Gao T, Joyce B, Yoon G, Zhang W, Schwartz J, Just A, Colicino E, Vokonas P, Zhao L, 
 #' Lv J, Baccarelli A, Hou L, Liu L. Estimating and Testing High-dimensional Mediation Effects in Epigenetic Studies. 
-#' Bioinformatics. 2016. DOI: 10.1093/bioinformatics/btw351. PubMed PMID: 27357171.
+#' Bioinformatics. 2016. DOI: 10.1093/bioinformatics/btw351. PMID: 27357171. PMCID: PMC5048064
 #' 
 #' @examples
 #' n <- 200  # sample size
@@ -80,6 +84,7 @@
 #' @export
 hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM, 
                  family = c("gaussian", "binomial"), 
+                 screen.family = c("gaussian", "negbin"), 
                  penalty = c("MCP", "SCAD", "lasso"), 
                  topN = NULL, 
                  parallel = FALSE, 
@@ -87,10 +92,12 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
                  verbose = FALSE, 
                  ...) {
     family <- match.arg(family)
+    screen.family <- match.arg(screen.family)
     penalty <- match.arg(penalty)
     
     if (parallel & (ncore == 1)) ncore <- parallel::detectCores()
-
+    if (!parallel & (ncore > 1)) parallel = TRUE
+    
     n <- nrow(M)
     p <- ncol(M)
     
@@ -110,9 +117,10 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     if(family == "binomial")
     {
       # Screen M using X given the limited information provided by Y (binary)
-      # Therefore the family is still gaussian
+      # Therefore the family is still gaussian by default (can be negative binomial only when
+      # family == "binomial")
       if(verbose) message("    Screening M using the association between X and M: ", appendLF = FALSE)
-      alpha = SIS_Results <- himasis(NA, M, X, COV.XM, glm.family = "gaussian", modelstatement = "Mone ~ X", 
+      alpha = SIS_Results <- himasis(NA, M, X, COV.XM, glm.family = screen.family, modelstatement = "Mone ~ X", 
                                parallel = parallel, ncore = ncore, verbose, tag = "Sure Independent Screening")
       SIS_Pvalue <- SIS_Results[2,]
     } else if (family == "gaussian"){
