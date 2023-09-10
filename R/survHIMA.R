@@ -19,8 +19,8 @@
 #'     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
 #'     \item{alpha_se: }{standard error for alpha.}
 #'     \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
-#'     \item{beta_se: }{standard error for beta}
-#'     \item{p.joint: }{joint p-value of selected significant mediator.}
+#'     \item{beta_se: }{standard error for beta.}
+#'     \item{p.joint: }{joint raw p-value of selected significant mediator (based on FDR).}
 #' }
 #' 
 #' @references Zhang H, Zheng Y, Hou L, Zheng C, Liu L. Mediation Analysis for Survival Data with High-Dimensional Mediators. 
@@ -28,14 +28,16 @@
 #' 
 #' @examples
 #' \dontrun{
-#' data(Example3)
-#' head(Example3$PhenoData)
+#' # Note: In the following example, M1, M2, and M3 are true mediators.
+#' data(himaDat)
 #' 
-#' survHIMA.fit <- survHIMA(X = Example3$PhenoData$Treatment,
-#'                 Z = Example3$PhenoData[, c("Sex", "Age")], 
-#'                 M = Example3$Mediator, 
-#'                 OT = Example3$PhenoData$Time, 
-#'                 status = Example3$PhenoData$Status, 
+#' head(himaDat$Example3$PhenoData)
+#' 
+#' survHIMA.fit <- survHIMA(X = himaDat$Example3$PhenoData$Treatment,
+#'                 Z = himaDat$Example3$PhenoData[, c("Sex", "Age")], 
+#'                 M = himaDat$Example3$Mediator, 
+#'                 OT = himaDat$Example3$PhenoData$Time, 
+#'                 status = himaDat$Example3$PhenoData$Status, 
 #'                 FDRcut = 0.05,
 #'                 scale = FALSE, 
 #'                 verbose = TRUE)
@@ -65,7 +67,7 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   #########################################################################
   ################################ STEP 1 #################################
   #########################################################################
-  message("Step 1: Sure Independent Screening ...", "     (", Sys.time(), ")")
+  message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
   
   d_0 <- 1*round(n/log(n))
   beta_SIS <- matrix(0,1,p)
@@ -93,7 +95,7 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   #########################################################################
   ################################ STEP 2 #################################
   #########################################################################
-  message("Step 2: De-biased Lasso estimates ...", "     (", Sys.time(), ")")
+  message("Step 2: De-biased Lasso estimates ...", "     (", format(Sys.time(), "%X"), ")")
   
   ## estimation of beta
   P_beta_SIS <- matrix(0,1,d)
@@ -134,7 +136,7 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   #########################################################################
   ################################ STEP 3 #################################
   #########################################################################
-  message("Step 3: Multiple-testing procedure ...", "     (", Sys.time(), ")")
+  message("Step 3: Multiple-testing procedure ...", "     (", format(Sys.time(), "%X"), ")")
   
   PA <- cbind(t(P_alpha_SIS), t(P_beta_SIS))
   P_value <- apply(PA,1,max)  # the joint p-values for SIS variable
@@ -168,9 +170,9 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
                            alpha_se = alpha_est, 
                            beta = beta_hat, 
                            beta_se = beta_est,
-                           pvalue = P_max)
+                           p.joint = P_max)
   
-  message("Done!", "     (", Sys.time(), ")")
+  message("Done!", "     (", format(Sys.time(), "%X"), ")")
   
   return(out_result)
 }

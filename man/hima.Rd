@@ -44,7 +44,7 @@ Covariates specified here will not participate penalization. If not specified, t
 mediator (\code{M}).}
 
 \item{penalty}{the penalty to be applied to the model. Either 'MCP' (the default), 'SCAD', or 
-'lasso'. See \code{\link{ncvreg}}.}
+'lasso'.}
 
 \item{topN}{an integer specifying the number of top markers from sure independent screening. 
 Default = \code{NULL}. If \code{NULL}, \code{topN} will be either \code{ceiling(n/log(n))} if 
@@ -71,8 +71,8 @@ A data.frame containing mediation testing results of selected mediators.
     \item{gamma: }{coefficient estimates of exposure (X) --> outcome (Y) (total effect).}
     \item{alpha*beta: }{mediation effect.}
     \item{\% total effect: }{alpha*beta / gamma. Percentage of the mediation effect out of the total effect.}
-    \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni procedure).}
-    \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg procedure).}
+    \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni-corrected p value).}
+    \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg FDR).}
 }
 }
 \description{
@@ -80,28 +80,30 @@ A data.frame containing mediation testing results of selected mediators.
 }
 \examples{
 \dontrun{
+# Note: In the following examples, M1, M2, and M3 are true mediators.
+data(himaDat)
+
 # When Y is continuous and normally distributed
 # Example 1 (continuous outcome): 
-data(Example1)
-head(Example1$PhenoData)
+head(himaDat$Example1$PhenoData)
 
-hima.fit <- hima(X = Example1$PhenoData$Treatment, 
-                 Y = Example1$PhenoData$Outcome, 
-                 M = Example1$Mediator,
-                 COV.XM = Example1$PhenoData[, c("Sex", "Age")],
+hima.fit <- hima(X = himaDat$Example1$PhenoData$Treatment, 
+                 Y = himaDat$Example1$PhenoData$Outcome, 
+                 M = himaDat$Example1$Mediator,
+                 COV.XM = himaDat$Example1$PhenoData[, c("Sex", "Age")],
+                 Y.family = 'gaussian',
                  scale = FALSE,
                  verbose = TRUE) 
 hima.fit
 
 # When Y is binary (should specify Y.family)
 # Example 2 (binary outcome): 
-data(Example2)
-head(Example2$PhenoData)
+head(himaDat$Example2$PhenoData)
 
-hima.logistic.fit <- hima(X = Example2$PhenoData$Treatment,
-                          Y = Example2$PhenoData$Disease,
-                          M = Example2$Mediator,
-                          COV.XM = Example2$PhenoData[, c("Sex", "Age")],
+hima.logistic.fit <- hima(X = himaDat$Example2$PhenoData$Treatment,
+                          Y = himaDat$Example2$PhenoData$Disease,
+                          M = himaDat$Example2$Mediator,
+                          COV.XM = himaDat$Example2$PhenoData[, c("Sex", "Age")],
                           Y.family = 'binomial',
                           scale = FALSE,
                           verbose = TRUE)

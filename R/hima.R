@@ -17,7 +17,7 @@
 #' @param M.family either 'gaussian' (default) or 'negbin' (i.e., negative binomial), depending on the data type of
 #' mediator (\code{M}).
 #' @param penalty the penalty to be applied to the model. Either 'MCP' (the default), 'SCAD', or 
-#' 'lasso'. See \code{\link{ncvreg}}.
+#' 'lasso'.
 #' @param topN an integer specifying the number of top markers from sure independent screening. 
 #' Default = \code{NULL}. If \code{NULL}, \code{topN} will be either \code{ceiling(n/log(n))} if 
 #' \code{Y.family = 'gaussian'}, or \code{ceiling(n/(2*log(n)))} if \code{Y.family = 'binomial'}, 
@@ -37,8 +37,8 @@
 #'     \item{gamma: }{coefficient estimates of exposure (X) --> outcome (Y) (total effect).}
 #'     \item{alpha*beta: }{mediation effect.}
 #'     \item{\% total effect: }{alpha*beta / gamma. Percentage of the mediation effect out of the total effect.}
-#'     \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni procedure).}
-#'     \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg procedure).}
+#'     \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni-corrected p value).}
+#'     \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg FDR).}
 #' }
 #' 
 #' @references Zhang H, Zheng Y, Zhang Z, Gao T, Joyce B, Yoon G, Zhang W, Schwartz J, Just A, Colicino E, Vokonas P, Zhao L, 
@@ -47,28 +47,30 @@
 #' 
 #' @examples
 #' \dontrun{
+#' # Note: In the following examples, M1, M2, and M3 are true mediators.
+#' data(himaDat)
+#' 
 #' # When Y is continuous and normally distributed
 #' # Example 1 (continuous outcome): 
-#' data(Example1)
-#' head(Example1$PhenoData)
+#' head(himaDat$Example1$PhenoData)
 #' 
-#' hima.fit <- hima(X = Example1$PhenoData$Treatment, 
-#'                  Y = Example1$PhenoData$Outcome, 
-#'                  M = Example1$Mediator,
-#'                  COV.XM = Example1$PhenoData[, c("Sex", "Age")],
+#' hima.fit <- hima(X = himaDat$Example1$PhenoData$Treatment, 
+#'                  Y = himaDat$Example1$PhenoData$Outcome, 
+#'                  M = himaDat$Example1$Mediator,
+#'                  COV.XM = himaDat$Example1$PhenoData[, c("Sex", "Age")],
+#'                  Y.family = 'gaussian',
 #'                  scale = FALSE,
 #'                  verbose = TRUE) 
 #' hima.fit
 #' 
 #' # When Y is binary (should specify Y.family)
 #' # Example 2 (binary outcome): 
-#' data(Example2)
-#' head(Example2$PhenoData)
+#' head(himaDat$Example2$PhenoData)
 #' 
-#' hima.logistic.fit <- hima(X = Example2$PhenoData$Treatment,
-#'                           Y = Example2$PhenoData$Disease,
-#'                           M = Example2$Mediator,
-#'                           COV.XM = Example2$PhenoData[, c("Sex", "Age")],
+#' hima.logistic.fit <- hima(X = himaDat$Example2$PhenoData$Treatment,
+#'                           Y = himaDat$Example2$PhenoData$Disease,
+#'                           M = himaDat$Example2$Mediator,
+#'                           COV.XM = himaDat$Example2$PhenoData[, c("Sex", "Age")],
 #'                           Y.family = 'binomial',
 #'                           scale = FALSE,
 #'                           verbose = TRUE)
@@ -100,7 +102,13 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     {
       X <- scale(X)
       M <- scale(M)
-      COV.XM<- scale(COV.XM)
+      COV.XM <- scale(COV.XM)
+      COV.MY <- scale(COV.MY)
+    } else {
+      X <- as.matrix(X)
+      M <- as.matrix(M)
+      COV.XM <- as.matrix(COV.XM)
+      COV.MY <- as.matrix(COV.MY)
     }
  
     if(is.null(topN)) {
@@ -114,7 +122,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     #########################################################################
     ################################ STEP 1 #################################
     #########################################################################
-    message("Step 1: Sure Independent Screening ...", "     (", Sys.time(), ")")
+    message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
     
     if(Y.family == "binomial")
     {
@@ -136,7 +144,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     # Note: ranking using p on un-standardized data is equivalent to ranking using beta on standardized data
     SIS_Pvalue_sort <- sort(SIS_Pvalue)
     ID <- which(SIS_Pvalue <= SIS_Pvalue_sort[d])  # the index of top mediators
-    if(verbose) message("    Top ", length(ID), " mediators are selected: ", paste0(names(SIS_Pvalue_sort[seq_len(d)]), collapse = ","))
+    if(verbose) message("    Top ", length(ID), " mediators are selected: ", paste0(names(SIS_Pvalue_sort[seq_len(d)]), collapse = ", "))
   
     M_SIS <- M[, ID]
     XM <- cbind(M_SIS, X)
@@ -144,7 +152,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     #########################################################################
     ################################ STEP 2 #################################
     #########################################################################
-    message("Step 2: Penalized estimate (", penalty, ") ...", "     (", Sys.time(), ")")
+    message("Step 2: Penalized estimate (", penalty, ") ...", "     (", format(Sys.time(), "%X"), ")")
     
     ## Based on the screening results in step 1. We will find the most influential M on Y.
     if(is.null(COV.MY)) {
@@ -182,7 +190,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     {
       ## This has been done in step 1 (when Y is binary, alpha is estimated in M ~ X)
       alpha <- alpha[, ID_test, drop = FALSE]
-      message("    Using alpha estimated in Step 1 ...   (", Sys.time(), ")")
+      message("    Using alpha estimated in Step 1 ...   (", format(Sys.time(), "%X"), ")")
     } else if(Y.family == "gaussian"){
       if(verbose) message("    Estimating alpha (effect of X on M): ", appendLF = FALSE)
       alpha <- himasis(NA, M[, ID_test, drop = FALSE], X, COV.XM, glm.family = M.family, 
@@ -195,7 +203,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
     #########################################################################
     ################################ STEP 3 #################################
     #########################################################################
-    message("Step 3: Joint significance test ...", "     (", Sys.time(), ")")
+    message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
     
     alpha_est_ID_test <- as.numeric(alpha[1, ])  #  the estimator for alpha
     P_adjust_alpha <- length(ID_test) * alpha[2, ]  # the adjusted p-value for alpha (bonferroni)
@@ -239,7 +247,7 @@ hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
                           `alpha*beta` = ab_est, `% total effect` = ab_est/gamma_est * 100, 
                           `Bonferroni.p` = P_value, `BH.FDR` = FDR, check.names = FALSE)
     
-    message("Done!", "     (", Sys.time(), ")")
+    message("Done!", "     (", format(Sys.time(), "%X"), ")")
     
     doParallel::stopImplicitCluster()
     

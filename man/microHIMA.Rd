@@ -4,7 +4,7 @@
 \alias{microHIMA}
 \title{High-dimensional mediation analysis for compositional microbiome data}
 \usage{
-microHIMA(X, Y, OTU, COV = NULL, FDPcut = 0.05, scale = TRUE)
+microHIMA(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbose = FALSE)
 }
 \arguments{
 \item{X}{a vector of exposure.}
@@ -17,19 +17,21 @@ columns represent variables.}
 \item{COV}{a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent microbiome variables. 
 Can be \code{NULL}.}
 
-\item{FDPcut}{FDP (false discovery proportions) cutoff applied to define and select significant mediators. Default = \code{0.05}.}
+\item{FDRcut}{FDR cutoff applied to define and select significant mediators. Default = \code{0.05}.}
 
 \item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
+
+\item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
 }
 \value{
-A data.frame containing mediation testing results of selected mediators (FDP < \code{FDPcut}). 
+A data.frame containing mediation testing results of selected mediators (FDR < \code{FDRcut}). 
 \itemize{
     \item{ID: }{index of selected significant mediator.}
     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
     \item{alpha_se: }{standard error for alpha.}
     \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
-    \item{beta_se: }{standard error for beta}
-    \item{p_FDP: }{false discovery proportions of selected significant mediator.}
+    \item{beta_se: }{standard error for beta.}
+    \item{FDR: }{false discovery rate of selected significant mediator.}
 }
 }
 \description{
@@ -37,13 +39,15 @@ A data.frame containing mediation testing results of selected mediators (FDP < \
 }
 \examples{
 \dontrun{
-data(Example4)
-head(Example4$PhenoData)
+# Note: In the following example, M1, M2, and M3 are true mediators.
+data(himaDat)
 
-microHIMA.fit <- microHIMA(X = Example4$PhenoData$Treatment, 
-                           Y = Example4$PhenoData$Outcome, 
-                           OTU = Example4$Mediator, 
-                           COV = Example4$PhenoData[, c("Sex", "Age")],
+head(himaDat$Example4$PhenoData)
+
+microHIMA.fit <- microHIMA(X = himaDat$Example4$PhenoData$Treatment, 
+                           Y = himaDat$Example4$PhenoData$Outcome, 
+                           OTU = himaDat$Example4$Mediator, 
+                           COV = himaDat$Example4$PhenoData[, c("Sex", "Age")],
                            scale = FALSE)
 microHIMA.fit
 }

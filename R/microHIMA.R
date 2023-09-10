@@ -1,5 +1,4 @@
 # This is the main function for our proposed method for high-dimensional compositional microbiome mediation analysis
-
 #' High-dimensional mediation analysis for compositional microbiome data
 #' 
 #' \code{microHIMA} is used to estimate and test high-dimensional mediation effects for compositional microbiome data.
@@ -11,16 +10,17 @@
 #' @param COV a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent microbiome variables. 
 #' Can be \code{NULL}.
 #' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
-#' @param FDPcut FDP (false discovery proportions) cutoff applied to define and select significant mediators. Default = \code{0.05}. 
+#' @param FDRcut FDR cutoff applied to define and select significant mediators. Default = \code{0.05}. 
+#' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
 #' 
-#' @return A data.frame containing mediation testing results of selected mediators (FDP < \code{FDPcut}). 
+#' @return A data.frame containing mediation testing results of selected mediators (FDR < \code{FDRcut}). 
 #' \itemize{
 #'     \item{ID: }{index of selected significant mediator.}
 #'     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
 #'     \item{alpha_se: }{standard error for alpha.}
 #'     \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
-#'     \item{beta_se: }{standard error for beta}
-#'     \item{p_FDP: }{false discovery proportions of selected significant mediator.}
+#'     \item{beta_se: }{standard error for beta.}
+#'     \item{FDR: }{false discovery rate of selected significant mediator.}
 #' }
 #' 
 #' @references Zhang H, Chen J, Feng Y, Wang C, Li H, Liu L. Mediation effect selection in high-dimensional and compositional microbiome data. 
@@ -31,19 +31,21 @@
 #' 
 #' @examples
 #' \dontrun{
-#' data(Example4)
-#' head(Example4$PhenoData)
+#' # Note: In the following example, M1, M2, and M3 are true mediators.
+#' data(himaDat)
 #' 
-#' microHIMA.fit <- microHIMA(X = Example4$PhenoData$Treatment, 
-#'                            Y = Example4$PhenoData$Outcome, 
-#'                            OTU = Example4$Mediator, 
-#'                            COV = Example4$PhenoData[, c("Sex", "Age")],
+#' head(himaDat$Example4$PhenoData)
+#' 
+#' microHIMA.fit <- microHIMA(X = himaDat$Example4$PhenoData$Treatment, 
+#'                            Y = himaDat$Example4$PhenoData$Outcome, 
+#'                            OTU = himaDat$Example4$Mediator, 
+#'                            COV = himaDat$Example4$PhenoData[, c("Sex", "Age")],
 #'                            scale = FALSE)
 #' microHIMA.fit
 #' }
 #' 
 #' @export
-microHIMA <- function(X, Y, OTU, COV = NULL, FDPcut = 0.05, scale = TRUE){
+microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbose = FALSE){
   
   X <- matrix(X, ncol = 1)
   
@@ -70,6 +72,8 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDPcut = 0.05, scale = TRUE){
   P_raw_DLASSO <- matrix(0,1,d)
   M1 <- t(t(M_raw[,1]))
   
+  message("Step 1: Isometric Log-ratio Transformation and De-biased Lasso estimates ...", "  (", format(Sys.time(), "%X"), ")")
+
   for (k in 1:d){
     M <- M_raw
     M[,1] <- M[,k]
@@ -109,8 +113,10 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDPcut = 0.05, scale = TRUE){
   
   P_adj_DLASSO <- as.numeric(P_raw_DLASSO)
   
-  ## The FDP method
-  set <- which(P_adj_DLASSO < FDPcut)
+  message("Step 2: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
+  
+  ## The FDR method
+  set <- which(P_adj_DLASSO < FDRcut)
   hom <- hommel::hommel(P_adj_DLASSO, simes = FALSE)
   N1 <- hommel::discoveries(hom, set, incremental = TRUE, alpha=0.05)
   
@@ -129,9 +135,9 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDPcut = 0.05, scale = TRUE){
                            alpha_se = alpha_SE[ID_FDR], 
                            beta = beta_EST[ID_FDR], 
                            beta_se = beta_SE[ID_FDR],
-                           p_FDP = P_adj_DLASSO[ID_FDR])
+                           FDR = P_adj_DLASSO[ID_FDR])
   
-  message("Done!", "     (", Sys.time(), ")")
+  message("Done!", "     (", format(Sys.time(), "%X"), ")")
   
   return(out_result)
 }
