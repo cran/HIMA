@@ -8,7 +8,7 @@ qHIMA(
   X,
   M,
   Y,
-  Z,
+  COV = NULL,
   penalty = c("MCP", "SCAD", "lasso"),
   topN = NULL,
   tau = 0.5,
@@ -26,9 +26,9 @@ represent mediator variables.}
 
 \item{Y}{a vector of continuous outcome. Do not use data.frame or matrix.}
 
-\item{Z}{a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.}
+\item{COV}{a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.}
 
-\item{penalty}{the penalty to be applied to the model (a parameter passed to function \code{conquer.cv.reg} in package \code{\link{conquer}}. 
+\item{penalty}{the penalty to be applied to the model (a parameter passed to function \code{conquer.cv.reg} in package \code{conquer}. 
 Either 'MCP' (the default), 'SCAD', or 'lasso'.}
 
 \item{topN}{an integer specifying the number of top markers from sure independent screening. 
@@ -39,21 +39,23 @@ If the sample size is greater than topN (pre-specified or calculated), all media
 
 \item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
 
-\item{Bonfcut}{Bonferroni-corrected p value cutoff applied to define and select significant mediators. Default = \code{0.05}.}
+\item{Bonfcut}{Bonferroni-corrected p value cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
 
-\item{...}{other arguments.}
+\item{...}{reserved passing parameter.}
 }
 \value{
 A data.frame containing mediation testing results of selected mediators (Bonferroni-adjusted p value <\code{Bonfcut}). 
-\itemize{
-    \item{ID: }{index of selected significant mediator.}
-    \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
+\describe{
+    \item{Index: }{mediation name of selected significant mediator.}
+    \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
     \item{alpha_se: }{standard error for alpha.}
-    \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
+    \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
     \item{beta_se: }{standard error for beta.}
-    \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni-corrected p value).}
+    \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+    \item{rimp: }{relative importance of the mediator.}
+    \item{pmax: }{joint raw p-value of selected significant mediator (based on Bonferroni method).}
 }
 }
 \description{
@@ -69,10 +71,10 @@ head(himaDat$Example5$PhenoData)
 qHIMA.fit <- qHIMA(X = himaDat$Example5$PhenoData$Treatment,
                 M = himaDat$Example5$Mediator, 
                 Y = himaDat$Example5$PhenoData$Outcome, 
-                Z = himaDat$Example5$PhenoData[, c("Sex", "Age")], 
+                COV = himaDat$Example5$PhenoData[, c("Sex", "Age")], 
                 Bonfcut = 0.05,
                 tau = c(0.3, 0.5, 0.7),
-                scale = FALSE, 
+                scale = FALSE, # Disabled only for simulation data
                 verbose = TRUE)
 qHIMA.fit
 }
@@ -80,5 +82,5 @@ qHIMA.fit
 }
 \references{
 Zhang H, Hong X, Zheng Y, Hou L, Zheng C, Wang X, Liu L. High-Dimensional Quantile Mediation Analysis with Application to a Birth 
-Cohort Study of Mother–Newborn Pairs. Bioinformatics. 2023. (In press)
+Cohort Study of Mother–Newborn Pairs. Bioinformatics. 2024. DOI: 10.1093/bioinformatics/btae055. PMID: 38290773; PMCID: PMC10873903
 }

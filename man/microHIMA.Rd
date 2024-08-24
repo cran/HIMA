@@ -4,34 +4,34 @@
 \alias{microHIMA}
 \title{High-dimensional mediation analysis for compositional microbiome data}
 \usage{
-microHIMA(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbose = FALSE)
+microHIMA(X, Y, OTU, COV = NULL, FDRcut = 0.05, verbose = FALSE)
 }
 \arguments{
 \item{X}{a vector of exposure.}
 
-\item{Y}{a vector of outcome.}
+\item{Y}{a vector of continuous outcome. Binary outcome is not allowed.}
 
-\item{OTU}{a \code{data.frame} or \code{matrix} of high-dimensional compositional OTUs (mediators). Rows represent samples, 
-columns represent variables.}
+\item{OTU}{a \code{data.frame} or \code{matrix} of high-dimensional Operational Taxonomic Unit (OTU) data (mediators). 
+Rows represent samples, columns represent variables.}
 
-\item{COV}{a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent microbiome variables. 
-Can be \code{NULL}.}
+\item{COV}{a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent 
+microbiome variables. Can be \code{NULL}.}
 
-\item{FDRcut}{FDR cutoff applied to define and select significant mediators. Default = \code{0.05}.}
-
-\item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
+\item{FDRcut}{Hommel FDR cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
 }
 \value{
-A data.frame containing mediation testing results of selected mediators (FDR < \code{FDRcut}). 
-\itemize{
-    \item{ID: }{index of selected significant mediator.}
-    \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
+A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}). 
+\describe{
+    \item{Index: }{mediation name of selected significant mediator.}
+    \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
     \item{alpha_se: }{standard error for alpha.}
-    \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
+    \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
     \item{beta_se: }{standard error for beta.}
-    \item{FDR: }{false discovery rate of selected significant mediator.}
+    \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+    \item{rimp: }{relative importance of the mediator.}
+    \item{pmax: }{joint raw p-value of selected significant mediator (based on Hommel FDR method).}
 }
 }
 \description{
@@ -47,16 +47,15 @@ head(himaDat$Example4$PhenoData)
 microHIMA.fit <- microHIMA(X = himaDat$Example4$PhenoData$Treatment, 
                            Y = himaDat$Example4$PhenoData$Outcome, 
                            OTU = himaDat$Example4$Mediator, 
-                           COV = himaDat$Example4$PhenoData[, c("Sex", "Age")],
-                           scale = FALSE)
+                           COV = himaDat$Example4$PhenoData[, c("Sex", "Age")])
 microHIMA.fit
 }
 
 }
 \references{
-Zhang H, Chen J, Feng Y, Wang C, Li H, Liu L. Mediation effect selection in high-dimensional and compositional microbiome data. 
-Stat Med. 2021. DOI: 10.1002/sim.8808. PMID: 33205470; PMCID: PMC7855955.
+1. Zhang H, Chen J, Feng Y, Wang C, Li H, Liu L. Mediation effect selection in high-dimensional and compositional microbiome data. 
+Stat Med. 2021. DOI: 10.1002/sim.8808. PMID: 33205470; PMCID: PMC7855955
 
-Zhang H, Chen J, Li Z, Liu L. Testing for mediation effect with application to human microbiome data. 
-Stat Biosci. 2021. DOI: 10.1007/s12561-019-09253-3. PMID: 34093887; PMCID: PMC8177450.
+2. Zhang H, Chen J, Li Z, Liu L. Testing for mediation effect with application to human microbiome data. 
+Stat Biosci. 2021. DOI: 10.1007/s12561-019-09253-3. PMID: 34093887; PMCID: PMC8177450
 }

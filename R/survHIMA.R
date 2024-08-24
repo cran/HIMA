@@ -4,27 +4,29 @@
 #' \code{survHIMA} is used to estimate and test high-dimensional mediation effects for survival data.
 #' 
 #' @param X a vector of exposure. 
-#' @param Z a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.
 #' @param M a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns 
 #' represent mediator variables.
+#' @param COV a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.
 #' @param OT a vector of observed failure times.
 #' @param status a vector of censoring indicator (\code{status = 1}: uncensored; \code{status = 0}: censored)
-#' @param FDRcut FDR cutoff applied to define and select significant mediators. Default = \code{0.05}. 
+#' @param FDRcut HDMT pointwise FDR cutoff applied to select significant mediators. Default = \code{0.05}. 
 #' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
 #' 
-#' @return A data.frame containing mediation testing results of selected mediators (FDR <\code{FDPcut}). 
-#' \itemize{
-#'     \item{ID: }{index of selected significant mediator.}
-#'     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
+#' @return A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}). 
+#' \describe{
+#'     \item{Index: }{mediation name of selected significant mediator.}
+#'     \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
 #'     \item{alpha_se: }{standard error for alpha.}
-#'     \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
+#'     \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
 #'     \item{beta_se: }{standard error for beta.}
-#'     \item{p.joint: }{joint raw p-value of selected significant mediator (based on FDR).}
+#'     \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+#'     \item{rimp: }{relative importance of the mediator.}
+#'     \item{pmax: }{joint raw p-value of selected significant mediator (based on HDMT pointwise FDR method).}
 #' }
 #' 
 #' @references Zhang H, Zheng Y, Hou L, Zheng C, Liu L. Mediation Analysis for Survival Data with High-Dimensional Mediators. 
-#' Bioinformatics. 2021. DOI: 10.1093/bioinformatics/btab564. PMID: 34343267. PMCID: PMC8570823
+#' Bioinformatics. 2021. DOI: 10.1093/bioinformatics/btab564. PMID: 34343267; PMCID: PMC8570823
 #' 
 #' @examples
 #' \dontrun{
@@ -34,35 +36,42 @@
 #' head(himaDat$Example3$PhenoData)
 #' 
 #' survHIMA.fit <- survHIMA(X = himaDat$Example3$PhenoData$Treatment,
-#'                 Z = himaDat$Example3$PhenoData[, c("Sex", "Age")], 
 #'                 M = himaDat$Example3$Mediator, 
+#'                 COV = himaDat$Example3$PhenoData[, c("Sex", "Age")], 
 #'                 OT = himaDat$Example3$PhenoData$Time, 
 #'                 status = himaDat$Example3$PhenoData$Status, 
 #'                 FDRcut = 0.05,
-#'                 scale = FALSE, 
+#'                 scale = FALSE, # Disabled only for simulation data
 #'                 verbose = TRUE)
 #' survHIMA.fit
 #' }
 #' 
 #' @export
-survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose = FALSE){
-
+survHIMA <- function(X, M, COV = NULL, OT, status, 
+                     FDRcut = 0.05, 
+                     scale = TRUE, 
+                     verbose = FALSE)
+{
+  
   X <- matrix(X, ncol = 1)
   M <- as.matrix(M)
   
   M_ID_name <- colnames(M)
   if(is.null(M_ID_name)) M_ID_name <- seq_len(ncol(M))
-    
-  MZ <- cbind(M,Z,X)
-  n <- length(X)
-  p <- dim(M)[2]
   
-  if(is.null(Z))
-    {q <- 0; MZ <- cbind(M,X)}
+  n <- nrow(M)
+  p <- nrow(M)
+  
+  if(is.null(COV))
+  {q <- 0; MZ <- cbind(M,X)}
   else
-    {Z <- as.matrix(Z); q <- dim(Z)[2]; MZ <- cbind(M,Z,X)}
+  {COV <- as.matrix(COV); q <- dim(COV)[2]; MZ <- cbind(M,COV,X)}
   
-  if(scale) MZ <- scale(MZ)
+  if(scale) 
+  {
+    MZ <- scale(MZ)
+    if(verbose) message("Data scaling is completed.")
+  }
   
   #########################################################################
   ################################ STEP 1 #################################
@@ -77,9 +86,9 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
     fit <- survival::coxph(survival::Surv(OT, status) ~ MZ_SIS)
     beta_SIS[i] <- fit$coefficients[1]
   }
-
+  
   alpha_SIS <- matrix(0,1,p)
-  XZ <- cbind(X,Z)
+  XZ <- cbind(X,COV)
   for (i in 1:p){
     fit_a  <- lsfit(XZ,M[,i],intercept = TRUE)
     est_a <- matrix(coef(fit_a))[2]
@@ -88,14 +97,23 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   
   ab_SIS <- alpha_SIS*beta_SIS
   ID_SIS  <- which(-abs(ab_SIS) <= sort(-abs(ab_SIS))[min(p, d_0)])
-
+  
   d <- length(ID_SIS)
-  if(verbose) message("        ", d, " mediators selected from the screening.")
+  
+  if(verbose) message("        Top ", d, " mediators are selected: ", paste0(M_ID_name[ID_SIS], collapse = ", "))
   
   #########################################################################
   ################################ STEP 2 #################################
   #########################################################################
   message("Step 2: De-biased Lasso estimates ...", "     (", format(Sys.time(), "%X"), ")")
+  
+  if(verbose)
+  {
+    if(is.null(COV)) 
+    {message("        No covariate was adjusted.")} 
+    else
+    {message("        Adjusting for covariate(s): ", paste0(colnames(COV), collapse = ", "))}
+  }
   
   ## estimation of beta
   P_beta_SIS <- matrix(0,1,d)
@@ -121,7 +139,7 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   alpha_SIS_est <- matrix(0,1,d)
   alpha_SIS_SE <- matrix(0,1,d)
   P_alpha_SIS <- matrix(0,1,d)
-  XZ <- cbind(X,Z)
+  XZ <- cbind(X,COV)
   
   for (i in 1:d){
     fit_a  <- lsfit(XZ,M[,ID_SIS[i]],intercept = TRUE)
@@ -139,8 +157,8 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
   message("Step 3: Multiple-testing procedure ...", "     (", format(Sys.time(), "%X"), ")")
   
   PA <- cbind(t(P_alpha_SIS), t(P_beta_SIS))
-  P_value <- apply(PA,1,max)  # the joint p-values for SIS variable
-
+  P_value <- apply(PA, 1, max)  # the joint p-values for SIS variable
+  
   ## the multiple-testing  procedure
   N0 <- dim(PA)[1]*dim(PA)[2]
   
@@ -155,22 +173,23 @@ survHIMA <- function(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose =
                            exact=0)
   
   ID_fdr <- which(fdrcut <= FDRcut)
-
-  if (length(ID_fdr) > 0){
-    alpha_hat <- alpha_SIS_est[ID_fdr]
-    alpha_est <- alpha_SIS_SE[ID_fdr]
-    beta_hat <- beta_DLASSO_SIS_est[ID_fdr]
-    beta_est <- beta_DLASSO_SIS_SE[ID_fdr]
-    ID <- ID_SIS[ID_fdr]
-    P_max <- P_value[ID_fdr]
-  }
   
-  out_result <- data.frame(ID = M_ID_name[ID], 
-                           alpha = alpha_hat, 
-                           alpha_se = alpha_est, 
-                           beta = beta_hat, 
-                           beta_se = beta_est,
-                           p.joint = P_max)
+  IDE <- alpha_SIS_est[ID_fdr] * beta_DLASSO_SIS_est[ID_fdr]
+  
+  if (length(ID_fdr) > 0){
+    out_result <- data.frame(Index = M_ID_name[ID_fdr], 
+                             alpha_hat = alpha_SIS_est[ID_fdr], 
+                             alpha_se = alpha_SIS_SE[ID_fdr], 
+                             beta_hat = beta_DLASSO_SIS_est[ID_fdr], 
+                             beta_se = beta_DLASSO_SIS_SE[ID_fdr],
+                             IDE = IDE, 
+                             rimp = abs(IDE)/sum(abs(IDE)) * 100, 
+                             pmax = P_value[ID_fdr])
+    if(verbose) message(paste0("        ", length(ID_fdr), " significant mediator(s) identified."))
+  } else {
+    if(verbose) message("        No significant mediator identified.")
+    out_result = NULL
+  }
   
   message("Done!", "     (", format(Sys.time(), "%X"), ")")
   

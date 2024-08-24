@@ -1,33 +1,35 @@
 # This is the main function for our proposed method for high-dimensional compositional microbiome mediation analysis
 #' High-dimensional mediation analysis for compositional microbiome data
 #' 
-#' \code{microHIMA} is used to estimate and test high-dimensional mediation effects for compositional microbiome data.
+#' \code{microHIMA} is used to estimate and test high-dimensional mediation effects for compositional microbiome data. 
 #' 
 #' @param X a vector of exposure. 
-#' @param Y a vector of outcome.
-#' @param OTU a \code{data.frame} or \code{matrix} of high-dimensional compositional OTUs (mediators). Rows represent samples, 
-#' columns represent variables.
-#' @param COV a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent microbiome variables. 
-#' Can be \code{NULL}.
-#' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
-#' @param FDRcut FDR cutoff applied to define and select significant mediators. Default = \code{0.05}. 
+#' @param Y a vector of continuous outcome. Binary outcome is not allowed.
+#' @param OTU a \code{data.frame} or \code{matrix} of high-dimensional Operational Taxonomic Unit (OTU) data (mediators). 
+#' Rows represent samples, columns represent variables.
+#' @param COV a \code{data.frame} or \code{matrix} of adjusting covariates. Rows represent samples, columns represent 
+#' microbiome variables. Can be \code{NULL}.
+#' @param FDRcut Hommel FDR cutoff applied to select significant mediators. Default = \code{0.05}. 
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
 #' 
-#' @return A data.frame containing mediation testing results of selected mediators (FDR < \code{FDRcut}). 
-#' \itemize{
-#'     \item{ID: }{index of selected significant mediator.}
-#'     \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
+#' @return A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}). 
+#' \describe{
+#'     \item{Index: }{mediation name of selected significant mediator.}
+#'     \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
 #'     \item{alpha_se: }{standard error for alpha.}
-#'     \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
+#'     \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
 #'     \item{beta_se: }{standard error for beta.}
-#'     \item{FDR: }{false discovery rate of selected significant mediator.}
+#'     \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+#'     \item{rimp: }{relative importance of the mediator.}
+#'     \item{pmax: }{joint raw p-value of selected significant mediator (based on Hommel FDR method).}
 #' }
 #' 
-#' @references Zhang H, Chen J, Feng Y, Wang C, Li H, Liu L. Mediation effect selection in high-dimensional and compositional microbiome data. 
-#' Stat Med. 2021. DOI: 10.1002/sim.8808. PMID: 33205470; PMCID: PMC7855955.
+#' @references
+#' 1. Zhang H, Chen J, Feng Y, Wang C, Li H, Liu L. Mediation effect selection in high-dimensional and compositional microbiome data. 
+#' Stat Med. 2021. DOI: 10.1002/sim.8808. PMID: 33205470; PMCID: PMC7855955
 #' 
-#' Zhang H, Chen J, Li Z, Liu L. Testing for mediation effect with application to human microbiome data. 
-#' Stat Biosci. 2021. DOI: 10.1007/s12561-019-09253-3. PMID: 34093887; PMCID: PMC8177450.
+#' 2. Zhang H, Chen J, Li Z, Liu L. Testing for mediation effect with application to human microbiome data. 
+#' Stat Biosci. 2021. DOI: 10.1007/s12561-019-09253-3. PMID: 34093887; PMCID: PMC8177450
 #' 
 #' @examples
 #' \dontrun{
@@ -39,14 +41,18 @@
 #' microHIMA.fit <- microHIMA(X = himaDat$Example4$PhenoData$Treatment, 
 #'                            Y = himaDat$Example4$PhenoData$Outcome, 
 #'                            OTU = himaDat$Example4$Mediator, 
-#'                            COV = himaDat$Example4$PhenoData[, c("Sex", "Age")],
-#'                            scale = FALSE)
+#'                            COV = himaDat$Example4$PhenoData[, c("Sex", "Age")])
 #' microHIMA.fit
 #' }
 #' 
 #' @export
-microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbose = FALSE){
-  
+microHIMA <- function(X, 
+                      Y, 
+                      OTU, 
+                      COV = NULL, 
+                      FDRcut = 0.05, 
+                      verbose = FALSE)
+{
   X <- matrix(X, ncol = 1)
   
   M_raw <- as.matrix(OTU)
@@ -55,10 +61,12 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbos
   if(is.null(M_ID_name)) M_ID_name <- seq_len(ncol(M_raw))
   
   if(!is.null(COV))
-    {COV <- as.matrix(COV); X <- cbind(X, COV)}
+  {COV <- as.matrix(COV); X <- cbind(X, COV)}
+  
+  X <- scale(X) 
   
   Y <- Y - mean(Y)
-
+  
   M <- M_raw
   n <- dim(M)[1]
   d <- dim(M)[2]
@@ -73,7 +81,15 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbos
   M1 <- t(t(M_raw[,1]))
   
   message("Step 1: Isometric Log-ratio Transformation and De-biased Lasso estimates ...", "  (", format(Sys.time(), "%X"), ")")
-
+  
+  if(verbose)
+  {
+    if(is.null(COV)) 
+    {message("        No covariate was adjusted.")} 
+    else
+    {message("        Adjusting for covariate(s): ", paste0(colnames(COV), collapse = ", "))}
+  }
+  
   for (k in 1:d){
     M <- M_raw
     M[,1] <- M[,k]
@@ -87,10 +103,8 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbos
       }
     }
     
-    MT <- matrix(as.numeric(MT), nrow(MT))
+    MT <- scale(MT)
     MX <- cbind(MT, X)
-
-    if(scale) MX <- scale(MX)
     
     fit.dlasso  <- DLASSO_fun(MX, Y)
     
@@ -113,7 +127,7 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbos
   
   P_adj_DLASSO <- as.numeric(P_raw_DLASSO)
   
-  message("Step 2: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
+  message("Step 2: Closted testing-based procedure ...", "     (", format(Sys.time(), "%X"), ")")
   
   ## The FDR method
   set <- which(P_adj_DLASSO < FDRcut)
@@ -129,13 +143,23 @@ microHIMA <- function(X, Y, OTU, COV = NULL, FDRcut = 0.05, scale = TRUE, verbos
   N0 <- N1 - N2
   
   ID_FDR <- set[which(N0 > 0)]
-
-  out_result <- data.frame(ID = M_ID_name[ID_FDR], 
-                           alpha = alpha_EST[ID_FDR], 
-                           alpha_se = alpha_SE[ID_FDR], 
-                           beta = beta_EST[ID_FDR], 
-                           beta_se = beta_SE[ID_FDR],
-                           FDR = P_adj_DLASSO[ID_FDR])
+  
+  IDE <- alpha_EST[ID_FDR] * beta_EST[ID_FDR]
+  
+  if (length(ID_FDR) > 0){
+    out_result <- data.frame(Index = M_ID_name[ID_FDR], 
+                             alpha_hat = alpha_EST[ID_FDR], 
+                             alpha_se = alpha_SE[ID_FDR], 
+                             beta_hat = beta_EST[ID_FDR], 
+                             beta_se = beta_SE[ID_FDR],
+                             IDE = IDE, 
+                             rimp = abs(IDE)/sum(abs(IDE)) * 100, 
+                             pmax = P_adj_DLASSO[ID_FDR])
+    if(verbose) message(paste0("        ", length(ID_FDR), " significant mediator(s) identified."))
+  } else {
+    if(verbose) message("        No significant mediator identified.")
+    out_result = NULL
+  }
   
   message("Done!", "     (", format(Sys.time(), "%X"), ")")
   

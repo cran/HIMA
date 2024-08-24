@@ -17,6 +17,7 @@ hima(
   parallel = FALSE,
   ncore = 1,
   scale = TRUE,
+  Bonfcut = 0.05,
   verbose = FALSE,
   ...
 )
@@ -38,7 +39,7 @@ Covariates specified here will not participate penalization. If not specified, t
 \code{M ~ X} will be applied. Using different sets of covariates is allowed but this needs to be handled carefully.}
 
 \item{Y.family}{either 'gaussian' (default) or 'binomial', depending on the data type of outcome (\code{Y}). See 
-\code{\link{ncvreg}}}
+\code{ncvreg}}
 
 \item{M.family}{either 'gaussian' (default) or 'negbin' (i.e., negative binomial), depending on the data type of
 mediator (\code{M}).}
@@ -59,20 +60,21 @@ By default max number of cores available in the machine will be utilized.}
 
 \item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
 
+\item{Bonfcut}{Bonferroni-corrected p value cutoff applied to select significant mediators. Default = \code{0.05}.}
+
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
 
-\item{...}{other arguments passed to \code{\link{ncvreg}}.}
+\item{...}{other arguments passed to \code{ncvreg}.}
 }
 \value{
 A data.frame containing mediation testing results of selected mediators. 
-\itemize{
-    \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
-    \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
-    \item{gamma: }{coefficient estimates of exposure (X) --> outcome (Y) (total effect).}
-    \item{alpha*beta: }{mediation effect.}
-    \item{\% total effect: }{alpha*beta / gamma. Percentage of the mediation effect out of the total effect.}
-    \item{Bonferroni.p: }{statistical significance of the mediator (Bonferroni-corrected p value).}
-    \item{BH.FDR: }{statistical significance of the mediator (Benjamini-Hochberg FDR).}
+\describe{
+    \item{Index: }{mediation name of selected significant mediator.}
+    \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
+    \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
+    \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+    \item{rimp: }{relative importance of the mediator.}
+    \item{pmax: }{joint raw p-value of selected significant mediator (based on Bonferroni method).}
 }
 }
 \description{
@@ -92,7 +94,7 @@ hima.fit <- hima(X = himaDat$Example1$PhenoData$Treatment,
                  M = himaDat$Example1$Mediator,
                  COV.XM = himaDat$Example1$PhenoData[, c("Sex", "Age")],
                  Y.family = 'gaussian',
-                 scale = FALSE,
+                 scale = FALSE, # Disabled only for simulation data
                  verbose = TRUE) 
 hima.fit
 
@@ -105,7 +107,7 @@ hima.logistic.fit <- hima(X = himaDat$Example2$PhenoData$Treatment,
                           M = himaDat$Example2$Mediator,
                           COV.XM = himaDat$Example2$PhenoData[, c("Sex", "Age")],
                           Y.family = 'binomial',
-                          scale = FALSE,
+                          scale = FALSE, # Disabled only for simulation data
                           verbose = TRUE)
 hima.logistic.fit
 }
@@ -114,5 +116,5 @@ hima.logistic.fit
 \references{
 Zhang H, Zheng Y, Zhang Z, Gao T, Joyce B, Yoon G, Zhang W, Schwartz J, Just A, Colicino E, Vokonas P, Zhao L, 
 Lv J, Baccarelli A, Hou L, Liu L. Estimating and Testing High-dimensional Mediation Effects in Epigenetic Studies. 
-Bioinformatics. 2016. DOI: 10.1093/bioinformatics/btw351. PMID: 27357171. PMCID: PMC5048064
+Bioinformatics. 2016. DOI: 10.1093/bioinformatics/btw351. PMID: 27357171; PMCID: PMC5048064
 }

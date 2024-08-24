@@ -4,35 +4,46 @@
 \alias{survHIMA}
 \title{High-dimensional mediation analysis for survival data}
 \usage{
-survHIMA(X, Z, M, OT, status, FDRcut = 0.05, scale = TRUE, verbose = FALSE)
+survHIMA(
+  X,
+  M,
+  COV = NULL,
+  OT,
+  status,
+  FDRcut = 0.05,
+  scale = TRUE,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{X}{a vector of exposure.}
 
-\item{Z}{a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.}
-
 \item{M}{a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns 
 represent mediator variables.}
+
+\item{COV}{a matrix of adjusting covariates. Rows represent samples, columns represent variables. Can be \code{NULL}.}
 
 \item{OT}{a vector of observed failure times.}
 
 \item{status}{a vector of censoring indicator (\code{status = 1}: uncensored; \code{status = 0}: censored)}
 
-\item{FDRcut}{FDR cutoff applied to define and select significant mediators. Default = \code{0.05}.}
+\item{FDRcut}{HDMT pointwise FDR cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
 }
 \value{
-A data.frame containing mediation testing results of selected mediators (FDR <\code{FDPcut}). 
-\itemize{
-    \item{ID: }{index of selected significant mediator.}
-    \item{alpha: }{coefficient estimates of exposure (X) --> mediators (M).}
+A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}). 
+\describe{
+    \item{Index: }{mediation name of selected significant mediator.}
+    \item{alpha_hat: }{coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
     \item{alpha_se: }{standard error for alpha.}
-    \item{beta: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for exposure).}
+    \item{beta_hat: }{coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
     \item{beta_se: }{standard error for beta.}
-    \item{p.joint: }{joint raw p-value of selected significant mediator (based on FDR).}
+    \item{IDE: }{mediation (indirect) effect, i.e., alpha*beta.}
+    \item{rimp: }{relative importance of the mediator.}
+    \item{pmax: }{joint raw p-value of selected significant mediator (based on HDMT pointwise FDR method).}
 }
 }
 \description{
@@ -46,12 +57,12 @@ data(himaDat)
 head(himaDat$Example3$PhenoData)
 
 survHIMA.fit <- survHIMA(X = himaDat$Example3$PhenoData$Treatment,
-                Z = himaDat$Example3$PhenoData[, c("Sex", "Age")], 
                 M = himaDat$Example3$Mediator, 
+                COV = himaDat$Example3$PhenoData[, c("Sex", "Age")], 
                 OT = himaDat$Example3$PhenoData$Time, 
                 status = himaDat$Example3$PhenoData$Status, 
                 FDRcut = 0.05,
-                scale = FALSE, 
+                scale = FALSE, # Disabled only for simulation data
                 verbose = TRUE)
 survHIMA.fit
 }
@@ -59,5 +70,5 @@ survHIMA.fit
 }
 \references{
 Zhang H, Zheng Y, Hou L, Zheng C, Liu L. Mediation Analysis for Survival Data with High-Dimensional Mediators. 
-Bioinformatics. 2021. DOI: 10.1093/bioinformatics/btab564. PMID: 34343267. PMCID: PMC8570823
+Bioinformatics. 2021. DOI: 10.1093/bioinformatics/btab564. PMID: 34343267; PMCID: PMC8570823
 }
