@@ -1,7 +1,7 @@
 # This is the function for efficient high-dimensional mediation analysis
 #' Efficient high-dimensional mediation analysis
 #'
-#' \code{eHIMA} is used to estimate and test high-dimensional mediation effects using an efficient algorithm. It provides
+#' \code{hima_efficient} is used to estimate and test high-dimensional mediation effects using an efficient algorithm. It provides
 #' higher statistical power than the standard \code{hima}. Note: efficient HIMA is only applicable to mediators and outcomes that
 #' are both continuous and normally distributed.
 #'
@@ -35,26 +35,25 @@
 #' @examples
 #' \dontrun{
 #' # Note: In the following example, M1, M2, and M3 are true mediators.
-#' data(himaDat)
 #'
 #' # Y is continuous and normally distributed
 #' # Example (continuous outcome):
-#' head(himaDat$Example1$PhenoData)
+#' head(ContinuousOutcome$PhenoData)
 #'
-#' eHIMA.fit <- eHIMA(
-#'   X = himaDat$Example1$PhenoData$Treatment,
-#'   Y = himaDat$Example1$PhenoData$Outcome,
-#'   M = himaDat$Example1$Mediator,
-#'   COV = himaDat$Example1$PhenoData[, c("Sex", "Age")],
+#' hima_efficient.fit <- hima_efficient(
+#'   X = ContinuousOutcome$PhenoData$Treatment,
+#'   Y = ContinuousOutcome$PhenoData$Outcome,
+#'   M = ContinuousOutcome$Mediator,
+#'   COV = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
 #'   scale = FALSE, # Disabled only for simulation data
 #'   FDRcut = 0.05,
 #'   verbose = TRUE
 #' )
-#' eHIMA.fit
+#' hima_efficient.fit
 #' }
 #'
 #' @export
-eHIMA <- function(X, M, Y, COV = NULL,
+hima_efficient <- function(X, M, Y, COV = NULL,
                   topN = NULL,
                   scale = TRUE,
                   FDRcut = 0.05,

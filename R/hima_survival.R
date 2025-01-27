@@ -1,7 +1,7 @@
 # This is the function for our proposed method for high-dimensional Cox mediation analysis
 #' High-dimensional mediation analysis for survival data
 #'
-#' \code{survHIMA} is used to estimate and test high-dimensional mediation effects for survival data.
+#' \code{hima_survival} is used to estimate and test high-dimensional mediation effects for survival data.
 #'
 #' @param X a vector of exposure. Do not use \code{data.frame} or \code{matrix}.
 #' @param M a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns
@@ -34,25 +34,24 @@
 #' @examples
 #' \dontrun{
 #' # Note: In the following example, M1, M2, and M3 are true mediators.
-#' data(himaDat)
 #'
-#' head(himaDat$Example3$PhenoData)
+#' head(SurvivalData$PhenoData)
 #'
-#' survHIMA.fit <- survHIMA(
-#'   X = himaDat$Example3$PhenoData$Treatment,
-#'   M = himaDat$Example3$Mediator,
-#'   OT = himaDat$Example3$PhenoData$Time,
-#'   status = himaDat$Example3$PhenoData$Status,
-#'   COV = himaDat$Example3$PhenoData[, c("Sex", "Age")],
+#' hima_survival.fit <- hima_survival(
+#'   X = SurvivalData$PhenoData$Treatment,
+#'   M = SurvivalData$Mediator,
+#'   OT = SurvivalData$PhenoData$Time,
+#'   status = SurvivalData$PhenoData$Status,
+#'   COV = SurvivalData$PhenoData[, c("Sex", "Age")],
 #'   scale = FALSE, # Disabled only for simulation data
 #'   FDRcut = 0.05,
 #'   verbose = TRUE
 #' )
-#' survHIMA.fit
+#' hima_survival.fit
 #' }
 #'
 #' @export
-survHIMA <- function(X, M, OT, status, COV = NULL,
+hima_survival <- function(X, M, OT, status, COV = NULL,
                      topN = NULL,
                      scale = TRUE,
                      FDRcut = 0.05,

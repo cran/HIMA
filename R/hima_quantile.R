@@ -1,7 +1,7 @@
 # This is the function for high-dimensional quantile mediation analysis
 #' High-dimensional quantile mediation analysis
 #'
-#' \code{qHIMA} is used to estimate and test high-dimensional quantile mediation effects.
+#' \code{hima_quantile} is used to estimate and test high-dimensional quantile mediation effects.
 #'
 #' @param X a vector of exposure. Do not use \code{data.frame} or \code{matrix}.
 #' @param M a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns
@@ -38,25 +38,24 @@
 #' @examples
 #' \dontrun{
 #' # Note: In the following example, M1, M2, and M3 are true mediators.
-#' data(himaDat)
 #'
-#' head(himaDat$Example5$PhenoData)
+#' head(QuantileData$PhenoData)
 #'
-#' qHIMA.fit <- qHIMA(
-#'   X = himaDat$Example5$PhenoData$Treatment,
-#'   M = himaDat$Example5$Mediator,
-#'   Y = himaDat$Example5$PhenoData$Outcome,
-#'   COV = himaDat$Example5$PhenoData[, c("Sex", "Age")],
+#' hima_quantile.fit <- hima_quantile(
+#'   X = QuantileData$PhenoData$Treatment,
+#'   M = QuantileData$Mediator,
+#'   Y = QuantileData$PhenoData$Outcome,
+#'   COV = QuantileData$PhenoData[, c("Sex", "Age")],
 #'   tau = c(0.3, 0.5, 0.7),
 #'   scale = FALSE, # Disabled only for simulation data
 #'   Bonfcut = 0.05,
 #'   verbose = TRUE
 #' )
-#' qHIMA.fit
+#' hima_quantile.fit
 #' }
 #'
 #' @export
-qHIMA <- function(X, M, Y, COV = NULL,
+hima_quantile <- function(X, M, Y, COV = NULL,
                   penalty = c("MCP", "SCAD", "lasso"),
                   topN = NULL,
                   tau = 0.5,

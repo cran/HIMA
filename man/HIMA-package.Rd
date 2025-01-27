@@ -2,8 +2,6 @@
 % Please edit documentation in R/HIMA-package.R
 \name{HIMA-package}
 \alias{HIMA-package}
-\alias{hima}
-\alias{HIMA}
 \title{High-Dimensional Mediation Analysis for 'Omic' Data}
 \description{
 HIMA is an R package for estimating and testing high-dimensional mediation effects in omic studies.
@@ -12,7 +10,7 @@ potential mediators, including epigenetics, transcriptomics, proteomics, metabol
 HIMA can also handle survival data mediation analysis and perform quantile mediation analysis.
 
 \tabular{ll}{ Package: \tab HIMA\cr Type: \tab Package\cr
-Version: \tab 2.3.0\cr Date: \tab 2024-10-28\cr License: \tab GPL-3\cr }
+Version: \tab 2.3.0\cr Date: \tab 2025-01-27\cr License: \tab GPL-3\cr }
 }
 \details{
 # If package "qvalue" is not found during installation, please first install "qvalue" package

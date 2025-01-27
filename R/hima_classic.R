@@ -1,7 +1,7 @@
 # This is the function classic high-dimensional mediation analysis
 #' Classic high-dimensional mediation analysis
 #'
-#' \code{classicHIMA} is used to estimate and test classic high-dimensional mediation effects (linear & logistic regression).
+#' \code{hima_classic} is used to estimate and test classic high-dimensional mediation effects (linear & logistic regression).
 #'
 #' @param X a vector of exposure. Do not use \code{data.frame} or \code{matrix}.
 #' @param M a \code{data.frame} or \code{matrix} of high-dimensional mediators. Rows represent samples, columns
@@ -47,17 +47,17 @@
 #' @examples
 #' \dontrun{
 #' # Note: In the following examples, M1, M2, and M3 are true mediators.
-#' data(himaDat)
+
 #'
 #' # When Y is continuous and normally distributed
 #' # Example 1 (continuous outcome):
-#' head(himaDat$Example1$PhenoData)
+#' head(ContinuousOutcome$PhenoData)
 #'
-#' hima.fit <- classicHIMA(
-#'   X = himaDat$Example1$PhenoData$Treatment,
-#'   Y = himaDat$Example1$PhenoData$Outcome,
-#'   M = himaDat$Example1$Mediator,
-#'   COV.XM = himaDat$Example1$PhenoData[, c("Sex", "Age")],
+#' hima.fit <- hima_classic(
+#'   X = ContinuousOutcome$PhenoData$Treatment,
+#'   Y = ContinuousOutcome$PhenoData$Outcome,
+#'   M = ContinuousOutcome$Mediator,
+#'   COV.XM = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
 #'   Y.type = "continuous",
 #'   scale = FALSE, # Disabled only for simulation data
 #'   verbose = TRUE
@@ -66,13 +66,13 @@
 #'
 #' # When Y is binary
 #' # Example 2 (binary outcome):
-#' head(himaDat$Example2$PhenoData)
+#' head(BinaryOutcome$PhenoData)
 #'
-#' hima.logistic.fit <- classicHIMA(
-#'   X = himaDat$Example2$PhenoData$Treatment,
-#'   Y = himaDat$Example2$PhenoData$Disease,
-#'   M = himaDat$Example2$Mediator,
-#'   COV.XM = himaDat$Example2$PhenoData[, c("Sex", "Age")],
+#' hima.logistic.fit <- hima_classic(
+#'   X = BinaryOutcome$PhenoData$Treatment,
+#'   Y = BinaryOutcome$PhenoData$Disease,
+#'   M = BinaryOutcome$Mediator,
+#'   COV.XM = BinaryOutcome$PhenoData[, c("Sex", "Age")],
 #'   Y.type = "binary",
 #'   scale = FALSE, # Disabled only for simulation data
 #'   verbose = TRUE
@@ -82,7 +82,7 @@
 #'
 #' @export
 #'
-classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
+hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
                         Y.type = c("continuous", "binary"),
                         M.type = c("gaussian", "negbin"),
                         penalty = c("MCP", "SCAD", "lasso"),
@@ -93,6 +93,14 @@ classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
                         Bonfcut = 0.05,
                         verbose = FALSE,
                         ...) {
+  
+  if (!is.null(COV.XM) && !is.data.frame(COV.XM) && !is.matrix(COV.XM)) {
+    stop("COV.XM must be either a data.frame or a matrix when provided.")
+  }
+  if (!is.null(COV.MY) && !is.data.frame(COV.MY) && !is.matrix(COV.MY)) {
+    stop("COV.MY must be either a data.frame or a matrix when provided.")
+  }
+  
   Y.type <- match.arg(Y.type)
   Y.family <- switch(Y.type,
     continuous = "gaussian",
@@ -137,7 +145,7 @@ classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
 
   if (Y.type == "binary") {
     # Screen M using X given the limited information provided by Y (binary)
-    if (verbose) message("    Screening M using the association between X (independent variable) and M (dependent variable): ", appendLF = FALSE)
+    if (verbose) message("    Screening M using the association between X (independent variable) and \nM (dependent variable): ", appendLF = FALSE)
     alpha <- SIS_Results <- himasis(NA, M, X, COV.XM,
       glm.family = M.type, modelstatement = "Mone ~ X",
       parallel = parallel, ncore = ncore, verbose, tag = paste0("Sure Independent Screening (M ~ X + COV.XM, family: ", M.type, ")")
@@ -145,7 +153,7 @@ classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     SIS_Pvalue <- SIS_Results[2, ]
   } else if (Y.type == "continuous") {
     # Screen M using Y (continuous)
-    if (verbose) message("    Screening M using the association between M (independent variable) and Y (dependent variable): ", appendLF = FALSE)
+    if (verbose) message("    Screening M using the association between M (independent variable) and \nY (dependent variable): ", appendLF = FALSE)
     SIS_Results <- himasis(Y, M, X, COV.MY,
       glm.family = "gaussian", modelstatement = "Y ~ Mone + X",
       parallel = parallel, ncore = ncore, verbose, tag = paste0("Sure Independent Screening (Y ~ M + X + COV.MY, family: ", Y.type, ")")
@@ -185,7 +193,7 @@ classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     fit <- ncvreg(XM_COV, Y,
       family = Y.family,
       penalty = penalty,
-      penalty.factor = c(rep(1, ncol(M_SIS)), rep(0, 1 + ncol(COV.MY))), ...
+      penalty.factor = c(rep(1, ncol(M_SIS)), rep(0, 1 + ncol(as.matrix(COV.MY)))), ...
     )
   }
   lam <- fit$lambda[which.min(BIC(fit))]
@@ -276,39 +284,4 @@ classicHIMA <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
 
     return(results)
   }
-}
-
-### hima function has been renamed to classicHIMA
-hima <- function(X, Y, M, COV.XM = NULL, COV.MY = COV.XM,
-                 Y.family = c("gaussian", "binomial"),
-                 M.family = c("gaussian", "negbin"),
-                 penalty = c("MCP", "SCAD", "lasso"),
-                 topN = NULL,
-                 parallel = FALSE,
-                 ncore = 1,
-                 scale = TRUE,
-                 Bonfcut = 0.05,
-                 verbose = FALSE,
-                 ...) {
-  .Deprecated(msg = "hima() is deprecated. Please use classicHIMA() with updated parameters.")
-
-  Y.family <- match.arg(Y.family)
-  if (Y.family == "gaussian") Y.type <- "continuous"
-  if (Y.family == "binomial") Y.type <- "binary"
-  M.family <- match.arg(M.family)
-  penalty <- match.arg(penalty)
-
-  classicHIMA(X, M, Y,
-    COV.XM = COV.XM, COV.MY = COV.XM,
-    Y.type = Y.type,
-    M.type = M.family,
-    penalty = penalty,
-    topN = topN,
-    parallel = parallel,
-    ncore = ncore,
-    scale = scale,
-    Bonfcut = Bonfcut,
-    verbose = verbose,
-    ...
-  )
 }

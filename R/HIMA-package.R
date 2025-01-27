@@ -7,11 +7,11 @@
 #' HIMA can also handle survival data mediation analysis and perform quantile mediation analysis.
 #'
 #' \tabular{ll}{ Package: \tab HIMA\cr Type: \tab Package\cr
-#' Version: \tab 2.3.0\cr Date: \tab 2024-10-28\cr License: \tab GPL-3\cr }
+#' Version: \tab 2.3.0\cr Date: \tab 2025-01-27\cr License: \tab GPL-3\cr }
 #'
 #' @name HIMA-package
 #'
-#' @aliases HIMA-package hima HIMA
+#' @aliases HIMA-package
 #'
 #' @details
 #' # If package "qvalue" is not found during installation, please first install "qvalue" package
@@ -65,5 +65,5 @@
 #' @importFrom survival Surv coxph
 #' @importFrom MASS mvrnorm glm.nb
 #' @importFrom hommel hommel discoveries
-#'
+#' @importFrom stats contrasts<-
 NULL
