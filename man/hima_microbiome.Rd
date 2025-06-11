@@ -4,7 +4,16 @@
 \alias{hima_microbiome}
 \title{High-dimensional mediation analysis for compositional microbiome data}
 \usage{
-hima_microbiome(X, OTU, Y, COV = NULL, FDRcut = 0.05, verbose = FALSE)
+hima_microbiome(
+  X,
+  OTU,
+  Y,
+  COV = NULL,
+  FDRcut = 0.05,
+  verbose = FALSE,
+  parallel = FALSE,
+  ncore = 1
+)
 }
 \arguments{
 \item{X}{a vector of exposure. Do not use \code{data.frame} or \code{matrix}.}
@@ -20,6 +29,10 @@ microbiome variables. Can be \code{NULL}.}
 \item{FDRcut}{Hommel FDR cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
+
+\item{parallel}{logical. Enable parallel computing feature? Default = \code{FALSE}.}
+
+\item{ncore}{number of cores to run parallel computing Valid when \code{parallel = TRUE}.}
 }
 \value{
 A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}).
@@ -41,13 +54,15 @@ A data.frame containing mediation testing results of significant mediators (FDR 
 \dontrun{
 # Note: In the following example, M1, M2, and M3 are true mediators.
 
-head(MicrobiomeData$PhenoData)
+data(MicrobiomeData)
+pheno_data <- MicrobiomeData$PhenoData
+mediator_data <- MicrobiomeData$Mediator
 
 hima_microbiome.fit <- hima_microbiome(
-  X = MicrobiomeData$PhenoData$Treatment,
-  Y = MicrobiomeData$PhenoData$Outcome,
-  OTU = MicrobiomeData$Mediator,
-  COV = MicrobiomeData$PhenoData[, c("Sex", "Age")],
+  X = pheno_data$Treatment,
+  Y = pheno_data$Outcome,
+  OTU = mediator_data,
+  COV = pheno_data[, c("Sex", "Age")],
   FDRcut = 0.05,
   verbose = TRUE
 )

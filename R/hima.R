@@ -4,8 +4,10 @@
 #' \code{hima} is a wrapper function designed to perform various HIMA methods for estimating and testing high-dimensional mediation effects.
 #' \code{hima} can automatically select the appropriate HIMA method based on the outcome and mediator data type.
 #'
-#' @param formula an object of class \code{formula} representing the overall effect model to be fitted, specified as \code{outcome ~ exposure + covariates}. 
+#' @param formula an object of class \code{formula} representing the overall effect model to be fitted, specified as \code{outcome ~ exposure + covariates}.
 #' The "exposure" variable (the variable of interest) must be listed first on the right-hand side of the formula.
+#' For survival outcomes specified using \code{Surv()}, the exposure should be the first
+#' variable after the \code{\link[base:tilde]{~}}.
 #' @param data.pheno a data frame containing the exposure, outcome, and covariates specified in the formula. Variable names in \code{data.pheno} must match those 
 #' in the formula. When \code{scale = TRUE}, the exposure and covariates will be scaled (the outcome retains its original scale).
 #' @param data.M a \code{data.frame} or \code{matrix} of high-dimensional mediators, with rows representing samples and columns representing mediator variables. 
@@ -26,6 +28,8 @@
 #' @param contrast a named list of contrasts to be applied to factor variables in the covariates (cannot be the variable of interest).
 #' @param subset an optional vector specifying a subset of observations to use in the analysis.
 #' @param verbose logical. Determines whether the function displays progress messages. Default is \code{FALSE}.
+#' @param parallel logical. Enable parallel computing feature? Default = \code{FALSE}.
+#' @param ncore number of cores to run parallel computing Valid when \code{parallel = TRUE}.
 #' @param ... reserved passing parameter (or for future use).
 #'
 #' @return A data.frame containing mediation testing results of selected mediators.
@@ -34,7 +38,7 @@
 #'     \item{alpha: }{Coefficient estimates of exposure (X) --> mediators (M) (adjusted for covariates).}
 #'     \item{beta: }{Coefficient estimates of mediators (M) --> outcome (Y) (adjusted for covariates and exposure).}
 #'     \item{alpha*beta: }{The estimated indirect (mediation) effect of exposure on outcome through each mediator.}
-#'     \item{Relative Importance: }{The proportion of each mediator's mediation effect relative to the sum of the absolute mediation effects of all significant mediators.}
+#'     \item{rimp: }{Relative importance- the proportion of each mediator's mediation effect relative to the sum of the absolute mediation effects of all significant mediators.}
 #'     \item{p-value: }{The joint p-value assessing the significance of each mediator's indirect effect, calculated based on the corresponding statistical approach.}
 #'     \item{tau: }{The quantile level of the outcome (applicable only when using the quantile mediation model).}
 #' }
@@ -67,11 +71,13 @@
 #' # Note: In the following examples, M1, M2, and M3 are true mediators.
 #'
 #' # Example 1 (continuous outcome - linear HIMA):
-#' head(ContinuousOutcome$PhenoData)
+#' data(ContinuousOutcome)
+#' pheno_data <- ContinuousOutcome$PhenoData
+#' mediator_data <- ContinuousOutcome$Mediator
 #'
 #' e1 <- hima(Outcome ~ Treatment + Sex + Age,
-#'   data.pheno = ContinuousOutcome$PhenoData,
-#'   data.M = ContinuousOutcome$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "gaussian",
 #'   penalty = "MCP", # Can be "DBlasso" for hima_dblasso
 #'   scale = FALSE
@@ -81,8 +87,8 @@
 #' # Efficient HIMA (only applicable to mediators and outcomes that are
 #' # both continuous and normally distributed.)
 #' e1e <- hima(Outcome ~ Treatment + Sex + Age,
-#'   data.pheno = ContinuousOutcome$PhenoData,
-#'   data.M = ContinuousOutcome$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "gaussian",
 #'   efficient = TRUE,
 #'   penalty = "MCP", # Efficient HIMA does not support DBlasso
@@ -91,11 +97,13 @@
 #' summary(e1e)
 #'
 #' # Example 2 (binary outcome - logistic HIMA):
-#' head(BinaryOutcome$PhenoData)
+#' data(BinaryOutcome)
+#' pheno_data <- BinaryOutcome$PhenoData
+#' mediator_data <- BinaryOutcome$Mediator
 #'
 #' e2 <- hima(Disease ~ Treatment + Sex + Age,
-#'   data.pheno = BinaryOutcome$PhenoData,
-#'   data.M = BinaryOutcome$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "gaussian",
 #'   penalty = "MCP",
 #'   scale = FALSE
@@ -103,11 +111,13 @@
 #' summary(e2)
 #'
 #' # Example 3 (time-to-event outcome - survival HIMA):
-#' head(SurvivalData$PhenoData)
+#' data(SurvivalData)
+#' pheno_data <- SurvivalData$PhenoData
+#' mediator_data <- SurvivalData$Mediator
 #'
 #' e3 <- hima(Surv(Time, Status) ~ Treatment + Sex + Age,
-#'   data.pheno = SurvivalData$PhenoData,
-#'   data.M = SurvivalData$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "gaussian",
 #'   penalty = "DBlasso",
 #'   scale = FALSE
@@ -115,23 +125,27 @@
 #' summary(e3)
 #'
 #' # Example 4 (compositional data as mediator, e.g., microbiome):
-#' head(MicrobiomeData$PhenoData)
+#' data(MicrobiomeData)
+#' pheno_data <- MicrobiomeData$PhenoData
+#' mediator_data <- MicrobiomeData$Mediator
 #'
 #' e4 <- hima(Outcome ~ Treatment + Sex + Age,
-#'   data.pheno = MicrobiomeData$PhenoData,
-#'   data.M = MicrobiomeData$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "compositional",
 #'   penalty = "DBlasso"
 #' ) # Scaling is always enabled internally for hima_microbiome
 #' summary(e4)
 #'
 #' #' # Example 5 (quantile mediation anlaysis - quantile HIMA):
-#' head(QuantileData$PhenoData)
+#' data(QuantileData)
+#' pheno_data <- QuantileData$PhenoData
+#' mediator_data <- QuantileData$Mediator
 #'
 #' # Note that the function will prompt input for quantile level.
 #' e5 <- hima(Outcome ~ Treatment + Sex + Age,
-#'   data.pheno = QuantileData$PhenoData,
-#'   data.M = QuantileData$Mediator,
+#'   data.pheno = pheno_data,
+#'   data.M = mediator_data,
 #'   mediator.type = "gaussian",
 #'   quantile = TRUE,
 #'   penalty = "MCP", # Quantile HIMA does not support DBlasso
@@ -154,6 +168,8 @@ hima <- function(formula,
                  contrast = NULL,
                  subset = NULL,
                  verbose = FALSE,
+                 parallel = FALSE,
+                 ncore = 1,
                  ...) {
   
   # Handle subset
@@ -167,7 +183,12 @@ hima <- function(formula,
   }
   
   # Identify the variable of interest (first term on the right-hand side of the formula)
-  var_of_interest <- all.vars(formula)[2]
+  if (as.character(formula[[2]])[1] == "Surv") {
+    rhs_vars <- all.vars(formula[[3]])
+    var_of_interest <- rhs_vars[1]
+  } else {
+    var_of_interest <- all.vars(formula)[2]
+  }
   
   # Apply contrasts only to covariates (not to the variable of interest)
   if (!is.null(contrast)) {
@@ -215,10 +236,10 @@ hima <- function(formula,
 
   # Adjust 'penalty' based on the conditions
   if (penalty == "DBlasso" && invalid_dblasso) {
-    message("Note: The selected conditions do not support de-biased Lasso penalty. \nSwitching to 'MCP' ...")
+    if (verbose) message("Note: The selected conditions do not support de-biased Lasso penalty. \nSwitching to 'MCP' ...")
     penalty <- "MCP"
   } else if (penalty != "DBlasso" && require_dblasso) {
-    message("Note: The selected conditions require de-biased Lasso penalty. \nSwitching to 'DBlasso' ...")
+    if (verbose) message("Note: The selected conditions require de-biased Lasso penalty. \nSwitching to 'DBlasso' ...")
     penalty <- "DBlasso"
   }
   
@@ -228,9 +249,9 @@ hima <- function(formula,
   if (efficient || quantile) {
     if (efficient) {
       if (penalty != "MCP") {
-        message("Note: Efficient HIMA works best with 'MCP' penalty. Switching penalty to 'MCP'...")
+        if (verbose) message("Note: Efficient HIMA works best with 'MCP' penalty. Switching penalty to 'MCP'...")
       }
-      message("Running efficient HIMA with 'MCP' penalty...")
+      if (verbose) message("Running efficient HIMA with 'MCP' penalty...")
       if (d$type != "continuous" || mediator.type != "gaussian") {
         stop("Efficient HIMA is only applicable to mediators and outcomes that are BOTH \ncontinuous and normally distributed.")
       }
@@ -243,14 +264,16 @@ hima <- function(formula,
         topN = NULL,
         scale = scale,
         FDRcut = sigcut,
-        verbose = verbose
+        verbose = verbose,
+        parallel = parallel,
+        ncore = ncore
       )
 
       results <- .res_prep(res, method_text = "DACT method with BH-FDR", sigcut = sigcut)
     }
 
     if (quantile) {
-      message("Running quantile HIMA with ", penalty, " penalty...")
+      if (verbose) message("Running quantile HIMA with ", penalty, " penalty...")
       if (d$type != "continuous" || mediator.type != "gaussian") {
         stop("Quantile HIMA is only applicable to mediators and outcomes that are BOTH \ncontinuous and normally distributed.")
       }
@@ -267,6 +290,8 @@ hima <- function(formula,
         scale = scale,
         Bonfcut = 0.05,
         verbose = verbose,
+        parallel = parallel,
+        ncore = ncore,
         ...
       )
 
@@ -277,7 +302,7 @@ hima <- function(formula,
     if (penalty == "DBlasso") {
       if (d$type == "continuous") {
         if (mediator.type == "gaussian") {
-          message("Running linear HIMA with de-biased Lasso penalty...")
+          if (verbose) message("Running linear HIMA with de-biased Lasso penalty...")
           res <- hima_dblasso(
             X = d$X,
             M = data.M,
@@ -286,25 +311,29 @@ hima <- function(formula,
             topN = NULL,
             scale = scale,
             FDRcut = sigcut,
-            verbose = verbose
+            verbose = verbose,
+            parallel = parallel,
+            ncore = ncore
           )
 
           results <- .res_prep(res, method_text = "HDMT pointwise FDR", sigcut = sigcut)
         } else if (mediator.type == "compositional") {
-          message("Running compositional HIMA with de-biased Lasso penalty...")
+          if (verbose) message("Running compositional HIMA with de-biased Lasso penalty...")
           res <- hima_microbiome(
             X = d$X,
             OTU = data.M,
             Y = d$Y,
             COV = d$COV,
             FDRcut = sigcut,
-            verbose = verbose
+            verbose = verbose,
+            parallel = parallel,
+            ncore = ncore
           )
 
           results <- .res_prep(res, method_text = "Hommel FDR", sigcut = sigcut)
         }
       } else if (d$type == "survival") {
-        message("Running survival HIMA with de-biased Lasso penalty...")
+        if (verbose) message("Running survival HIMA with de-biased Lasso penalty...")
         res <- hima_survival(
           X = d$X,
           M = data.M,
@@ -314,7 +343,9 @@ hima <- function(formula,
           topN = NULL,
           scale = scale,
           FDRcut = sigcut,
-          verbose = verbose
+          verbose = verbose,
+          parallel = parallel,
+          ncore = ncore
         )
 
         results <- .res_prep(res, method_text = "HDMT pointwise FDR", sigcut = sigcut)
@@ -329,18 +360,18 @@ hima <- function(formula,
         M.type = mediator.type,
         penalty = penalty,
         topN = NULL,
-        parallel = FALSE,
-        ncore = 1,
         scale = scale,
         Bonfcut = sigcut,
-        verbose = verbose
+        verbose = verbose,
+        parallel = parallel,
+        ncore = ncore
       )
 
       results <- .res_prep(res, method_text = "Bonferroni-adjusted p", sigcut = sigcut)
     }
   }
 
-  if (is.null(results)) message("No significant mediator found!")
+  if (is.null(results) && verbose) message("No significant mediator found!")
 
   return(structure(results, class = "hima"))
 }
@@ -352,7 +383,7 @@ summary.hima <- function(object, desc = FALSE, ...) {
     return(invisible(NULL))
   }
   
-  required_fields <- c("ID", "alpha", "beta", "alpha*beta", "Relative Importance (%)", "p-value")
+  required_fields <- c("ID", "alpha", "beta", "alpha*beta", "rimp", "p-value")
   for (field in required_fields) {
     if (!field %in% names(object)) {
       stop(sprintf("The required field '%s' is missing from the object.", field))
@@ -370,7 +401,7 @@ summary.hima <- function(object, desc = FALSE, ...) {
       alpha = object$alpha,
       beta = object$beta,
       `alpha*beta` = object$`alpha*beta`,
-      `Relative Importance (%)` = object$`Relative Importance (%)`,
+      `rimp` = object$rimp,
       `p-value` = object$`p-value`,
       tau = object$tau,  
       check.names = FALSE,
@@ -382,7 +413,7 @@ summary.hima <- function(object, desc = FALSE, ...) {
       alpha = object$alpha,
       beta = object$beta,
       `alpha*beta` = object$`alpha*beta`,
-      `Relative Importance (%)` = object$`Relative Importance (%)`,
+      `rimp` = object$rimp,
       `p-value` = object$`p-value`,
       check.names = FALSE,  
       stringsAsFactors = FALSE
@@ -422,7 +453,7 @@ summary.hima <- function(object, desc = FALSE, ...) {
     alpha = res$alpha_hat,
     beta = res$beta_hat,
     `alpha*beta` = res$IDE,
-    `Relative Importance (%)` = res$rimp,
+    `rimp` = res$rimp,
     `p-value` = res$pmax,
     check.names = FALSE
   )
@@ -432,7 +463,7 @@ summary.hima <- function(object, desc = FALSE, ...) {
     "alpha: Effect of exposure on mediator",
     "beta: Effect of mediator on outcome",
     "alpha*beta: Mediation (indirect) effect",
-    "Relative Importance (%): Relative importance of the mediator \n  out of all significant mediators",
+    "rimp: Relative importance of the mediator \n  out of all significant mediators",
     paste0("p-value: Joint raw p-value of significant mediator \n  selected based on ", method_text, " < ", sigcut)
   )
   if (q) {

@@ -18,6 +18,8 @@
 #' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
 #' @param Bonfcut Bonferroni-corrected p value cutoff applied to select significant mediators. Default = \code{0.05}.
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
+#' @param parallel logical. Enable parallel computing feature? Default = \code{FALSE}.
+#' @param ncore number of cores to run parallel computing Valid when \code{parallel = TRUE}.
 #' @param ... reserved passing parameter.
 #'
 #' @return A data.frame containing mediation testing results of selected mediators (Bonferroni-adjusted p value <\code{Bonfcut}).
@@ -39,13 +41,15 @@
 #' \dontrun{
 #' # Note: In the following example, M1, M2, and M3 are true mediators.
 #'
-#' head(QuantileData$PhenoData)
+#' data(QuantileData)
+#' pheno_data <- QuantileData$PhenoData
+#' mediator_data <- QuantileData$Mediator
 #'
 #' hima_quantile.fit <- hima_quantile(
-#'   X = QuantileData$PhenoData$Treatment,
-#'   M = QuantileData$Mediator,
-#'   Y = QuantileData$PhenoData$Outcome,
-#'   COV = QuantileData$PhenoData[, c("Sex", "Age")],
+#'   X = pheno_data$Treatment,
+#'   Y = pheno_data$Outcome,
+#'   M = mediator_data,
+#'   COV = pheno_data[, c("Sex", "Age")],
 #'   tau = c(0.3, 0.5, 0.7),
 #'   scale = FALSE, # Disabled only for simulation data
 #'   Bonfcut = 0.05,
@@ -62,6 +66,8 @@ hima_quantile <- function(X, M, Y, COV = NULL,
                   scale = TRUE,
                   Bonfcut = 0.05,
                   verbose = FALSE,
+                  parallel = FALSE,
+                  ncore = 1,
                   ...) {
   penalty <- match.arg(penalty)
 
@@ -77,6 +83,8 @@ hima_quantile <- function(X, M, Y, COV = NULL,
 
   if (scale && verbose) message("Data scaling is completed.")
 
+  checkParallel("hima_quantile", parallel, ncore, verbose)
+
   if (is.null(COV)) XZ <- X else XZ <- cbind(X, COV)
 
   if (is.null(topN)) d <- ceiling(2 * n / log(n)) else d <- topN # the number of top mediators that associated with exposure (X)
@@ -89,24 +97,29 @@ hima_quantile <- function(X, M, Y, COV = NULL,
 
   for (tau_temp in tau)
   {
-    message("Running penalized quantile regression with tau = ", tau_temp, " ...", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Running penalized quantile regression with tau = ", tau_temp, " ...", "     (", format(Sys.time(), "%X"), ")")
 
     #------------- Step 1: Mediator screening ---------------------------
-    message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
 
     alpha_est <- matrix(0, 1, p) # the OLS estimator of alpha
     alpha_SE <- matrix(0, 1, p) # the SE of alpha-OLS
     beta_SIS_est <- matrix(0, 1, p) # the screening based estimator of beta
     # beta_SIS_SE <- matrix(0, 1, p) # the SE of beta_SIS_est
 
-    for (k in 1:p) {
+    screening_res <- foreach(k = seq_len(p), .combine = rbind) %dopar% {
       MXZ_k <- cbind(M[, k], XZ)
-      fit_rq <- rq(Y ~ MXZ_k, tau = tau_temp, method = "fn", model = TRUE) # screening in the path M-Y
-      beta_SIS_est[k] <- fit_rq$coefficients[2]
-      fit_M <- lsfit(XZ, M[, k], intercept = TRUE) # screening in the path x-M
-      alpha_est[k] <- matrix(coef(fit_M))[2]
-      alpha_SE[k] <- ls.diag(fit_M)$std.err[2]
+      fit_rq <- rq(Y ~ MXZ_k, tau = tau_temp, method = "fn", model = TRUE)
+      beta_val <- fit_rq$coefficients[2]
+      fit_M <- lsfit(XZ, M[, k], intercept = TRUE)
+      alpha_val <- matrix(coef(fit_M))[2]
+      alpha_se <- ls.diag(fit_M)$std.err[2]
+      c(beta_val, alpha_val, alpha_se)
     }
+    if (is.null(dim(screening_res))) screening_res <- matrix(screening_res, nrow = 1)
+    beta_SIS_est <- screening_res[, 1]
+    alpha_est <- screening_res[, 2]
+    alpha_SE <- screening_res[, 3]
 
     T_sobel <- beta_SIS_est
     ID_SIS <- which(-abs(T_sobel) <= sort(-abs(T_sobel))[d]) # the index set in Step 1 after the screening
@@ -115,7 +128,7 @@ hima_quantile <- function(X, M, Y, COV = NULL,
 
 
     #----------- Step 2: Penalized estimate in Quantile Regression model
-    message("Step 2: Penalized estimate (", penalty, ") ...", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Step 2: Penalized estimate (", penalty, ") ...", "     (", format(Sys.time(), "%X"), ")")
 
     if (verbose) {
       if (is.null(COV)) {
@@ -131,7 +144,7 @@ hima_quantile <- function(X, M, Y, COV = NULL,
     beta.penalty <- fit.penalty$coeff.min[2:(d + 1)]
 
     #---------- Step 3: Mediator significance testing
-    message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
 
     beta_fit_penalty <- matrix(0, 1, p)
     ID_penalty <- ID_SIS[which(beta.penalty != 0)] # the index of nonzero mediators
@@ -167,16 +180,18 @@ hima_quantile <- function(X, M, Y, COV = NULL,
           IDE = IDE,
           rimp = abs(IDE) / sum(abs(IDE)) * 100,
           pmax = P_max_k_penalty[sig_ind],
-          tau = tau_temp
+          tau = tau_temp, row.names = NULL
         )
       )
       if (verbose) message(paste0("        ", length(ID_Non_penalty_Pmax), " significant mediator(s) identified."))
     } else {
       if (verbose) message("        No significant mediator identified.")
     }
-    message("\t")
+    if (verbose) message("\t")
   }
 
-  message("Done!", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Done!", "     (", format(Sys.time(), "%X"), ")")
+
+  doParallel::stopImplicitCluster()
   return(out_result)
 }

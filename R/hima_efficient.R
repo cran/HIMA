@@ -16,6 +16,8 @@
 #' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
 #' @param FDRcut Benjamini-Hochberg FDR cutoff applied to select significant mediators. Default = \code{0.05}.
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
+#' @param parallel logical. Enable parallel computing feature? Default = \code{FALSE}.
+#' @param ncore number of cores to run parallel computing Valid when \code{parallel = TRUE}.
 #'
 #' @return A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}).
 #' \describe{
@@ -38,13 +40,15 @@
 #'
 #' # Y is continuous and normally distributed
 #' # Example (continuous outcome):
-#' head(ContinuousOutcome$PhenoData)
+#' data(ContinuousOutcome)
+#' pheno_data <- ContinuousOutcome$PhenoData
+#' mediator_data <- ContinuousOutcome$Mediator
 #'
 #' hima_efficient.fit <- hima_efficient(
-#'   X = ContinuousOutcome$PhenoData$Treatment,
-#'   Y = ContinuousOutcome$PhenoData$Outcome,
-#'   M = ContinuousOutcome$Mediator,
-#'   COV = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
+#'   X = pheno_data$Treatment,
+#'   Y = pheno_data$Outcome,
+#'   M = mediator_data,
+#'   COV = pheno_data[, c("Sex", "Age")],
 #'   scale = FALSE, # Disabled only for simulation data
 #'   FDRcut = 0.05,
 #'   verbose = TRUE
@@ -57,7 +61,9 @@ hima_efficient <- function(X, M, Y, COV = NULL,
                   topN = NULL,
                   scale = TRUE,
                   FDRcut = 0.05,
-                  verbose = FALSE) {
+                  verbose = FALSE,
+                  parallel = FALSE,
+                  ncore = 1) {
   n <- nrow(M)
   p <- ncol(M)
 
@@ -69,6 +75,8 @@ hima_efficient <- function(X, M, Y, COV = NULL,
   COV <- process_var(COV, scale)
 
   if (scale && verbose) message("Data scaling is completed.")
+
+  checkParallel("hima_efficient", parallel, ncore, verbose)
 
   if (is.null(COV)) {
     MZX <- cbind(M, X)
@@ -87,22 +95,19 @@ hima_efficient <- function(X, M, Y, COV = NULL,
   if (is.null(M_ID_name)) M_ID_name <- seq_len(p)
 
   #------------- Step 1:  mediator screening ---------------------------
-  message("Step 1: Sure Independent Screening + minimax concave penalty (MCP) ...", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Step 1: Sure Independent Screening + minimax concave penalty (MCP) ...", "     (", format(Sys.time(), "%X"), ")")
 
-  beta_SIS <- matrix(0, 1, p)
-  for (i in 1:p) {
+  beta_SIS <- foreach(i = seq_len(p), .combine = "c") %dopar% {
     ID_S <- c(i, (p + 1):(p + q + 1))
     MZX_SIS <- MZX[, ID_S]
     fit <- lsfit(MZX_SIS, Y, intercept = TRUE)
-    beta_SIS[i] <- fit$coefficients[2]
+    fit$coefficients[2]
   }
 
   ## est_a for SIS #########
-  alpha_SIS <- matrix(0, 1, p)
-  for (i in 1:p) {
+  alpha_SIS <- foreach(i = seq_len(p), .combine = "c") %dopar% {
     fit_a <- lsfit(XZ, M[, i], intercept = TRUE)
-    est_a <- matrix(coef(fit_a))[2]
-    alpha_SIS[i] <- est_a
+    as.numeric(coef(fit_a))[2]
   }
   ab_SIS <- alpha_SIS * beta_SIS
   ID_SIS <- which(-abs(ab_SIS) <= sort(-abs(ab_SIS))[d]) # \Omega_1
@@ -125,7 +130,7 @@ hima_efficient <- function(X, M, Y, COV = NULL,
   id_non <- ID_SIS[which(beta_penalty != 0)] # the ID of non-zero
 
   #----------- Step 2: Refitted partial regression ----------------------
-  message("Step 2: Refitted partial regression ...", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Step 2: Refitted partial regression ...", "     (", format(Sys.time(), "%X"), ")")
   ## beta_est ########
   MZX_penalty <- MZX[, c(id_non, (p + 1):(p + q + 1))]
   fit <- lsfit(MZX_penalty, Y, intercept = TRUE)
@@ -137,69 +142,64 @@ hima_efficient <- function(X, M, Y, COV = NULL,
   beta_SE <- ls.diag(fit)$std.err[2:(length(id_non) + 1)]
   P_beta_penalty <- 2 * (1 - pnorm(abs(beta_est_cox[seq_along(id_non)]) / beta_SE_cox[seq_along(id_non)], 0, 1))
 
-  P_oracle_beta <- matrix(0, 1, p) # an empty vector
-  beta_est_orc <- matrix(0, 1, p)
-  beta_SE_orc <- matrix(0, 1, p)
-
-  j <- 1
-  for (i in 1:p) {
+  beta_results <- foreach(i = seq_len(p), .combine = rbind) %dopar% {
     if (i %in% id_non) {
-      P_oracle_beta[i] <- P_beta_penalty[j]
-      beta_est_orc[i] <- beta_est[j]
-      beta_SE_orc[i] <- beta_SE[j]
-      j <- j + 1
+      j <- which(id_non == i)
+      c(beta_est[j], beta_SE[j], P_beta_penalty[j])
     } else {
       MZX_ora <- MZX[, c(id_non, i, (p + 1):(p + q + 1))]
       fit_ora <- lsfit(MZX_ora, Y, intercept = TRUE)
-      beta_est_cox <- fit_ora$coefficients[2:(dim(MZX_ora)[2] + 1)]
-      beta_est_orc[i] <- beta_est_cox[length(id_non) + 1]
-      beta_SE_cox <- ls.diag(fit_ora)$std.err[2:(dim(MZX_ora)[2] + 1)]
-
-      beta_SE_orc[i] <- beta_SE_cox[length(id_non) + 1]
-      P_oracle_beta[i] <- 2 * (1 - pnorm(abs(beta_est_cox) / beta_SE_cox, 0, 1))[length(id_non) + 1]
+      beta_est_cox <- fit_ora$coefficients[2:(ncol(MZX_ora) + 1)]
+      est <- beta_est_cox[length(id_non) + 1]
+      beta_se_cox <- ls.diag(fit_ora)$std.err[2:(ncol(MZX_ora) + 1)]
+      se <- beta_se_cox[length(id_non) + 1]
+      p_val <- 2 * (1 - pnorm(abs(beta_est_cox) / beta_se_cox, 0, 1))[length(id_non) + 1]
+      c(est, se, p_val)
     }
   }
+  if (is.null(dim(beta_results))) beta_results <- matrix(beta_results, nrow = 1)
+  beta_est_orc <- beta_results[, 1]
+  beta_SE_orc <- beta_results[, 2]
+  P_oracle_beta <- beta_results[, 3]
 
   ## ----- P_oracle_alpha ----------------- ##
-  alpha_est_penalty <- matrix(0, 1, length(id_non))
-  alpha_SE_penalty <- matrix(0, 1, length(id_non))
-  P_alpha_penalty <- matrix(0, 1, length(id_non))
-  for (i in seq_along(id_non)) {
+  alpha_pen_results <- foreach(i = seq_along(id_non), .combine = rbind) %dopar% {
     fit_a <- lsfit(XZ, M[, id_non[i]], intercept = TRUE)
     est_a <- matrix(coef(fit_a))[2]
     se_a <- ls.diag(fit_a)$std.err[2]
     sd_1 <- abs(est_a) / se_a
-    P_alpha_penalty[i] <- 2 * (1 - pnorm(sd_1, 0, 1)) ## the SIS for alpha
-    alpha_est_penalty[i] <- est_a
-    alpha_SE_penalty[i] <- se_a
+    c(est_a, se_a, 2 * (1 - pnorm(sd_1, 0, 1)))
   }
+  if (is.null(dim(alpha_pen_results))) alpha_pen_results <- matrix(alpha_pen_results, nrow = 1)
+  alpha_est_penalty <- alpha_pen_results[, 1]
+  alpha_SE_penalty <- alpha_pen_results[, 2]
+  P_alpha_penalty <- alpha_pen_results[, 3]
 
   ### P_oracle_alpha #########
   P_oracle_alpha <- matrix(0, 1, p) # an empty vector
   alpha_est_orc <- matrix(0, 1, p)
   alpha_SE_orc <- matrix(0, 1, p)
 
-  j <- 1
-  for (i in 1:p) {
+  alpha_results <- foreach(i = seq_len(p), .combine = rbind) %dopar% {
     if (i %in% id_non) {
-      P_oracle_alpha[i] <- P_alpha_penalty[j]
-      alpha_est_orc[i] <- alpha_est_penalty[j]
-      alpha_SE_orc[i] <- alpha_SE_penalty[j]
-      j <- j + 1
+      j <- which(id_non == i)
+      c(alpha_est_penalty[j], alpha_SE_penalty[j], P_alpha_penalty[j])
     } else {
       fit_a_ora <- lsfit(XZ, M[, i], intercept = TRUE)
       est_a_ora <- matrix(coef(fit_a_ora))[2]
       se_a_ora <- ls.diag(fit_a_ora)$std.err[2]
       sd_1_ora <- abs(est_a_ora) / se_a_ora
-      P_alpha_penalty_ora <- 2 * (1 - pnorm(sd_1_ora, 0, 1))
-      P_oracle_alpha[i] <- P_alpha_penalty_ora
-      alpha_est_orc[i] <- est_a_ora
-      alpha_SE_orc[i] <- se_a_ora
+      p_val <- 2 * (1 - pnorm(sd_1_ora, 0, 1))
+      c(est_a_ora, se_a_ora, p_val)
     }
   }
+  if (is.null(dim(alpha_results))) alpha_results <- matrix(alpha_results, nrow = 1)
+  alpha_est_orc <- alpha_results[, 1]
+  alpha_SE_orc <- alpha_results[, 2]
+  P_oracle_alpha <- alpha_results[, 3]
 
   #---------- Step 3: DACT  -------------------------
-  message("Step 3: Divide-aggregate composite-null test (DACT) ...", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Step 3: Divide-aggregate composite-null test (DACT) ...", "     (", format(Sys.time(), "%X"), ")")
 
   # Mediator selection
   P_oracle_alpha[P_oracle_alpha == 0] <- 10^(-17)
@@ -207,7 +207,7 @@ hima_efficient <- function(X, M, Y, COV = NULL,
   P_BH <- (1:p) * (FDRcut / p)
 
   ## DACT
-  DACT_ora <- DACT(p_a = t(P_oracle_alpha), p_b = t(P_oracle_beta))
+  DACT_ora <- DACT(p_a = as.numeric(P_oracle_alpha), p_b = as.numeric(P_oracle_beta))  
   P_sort_DACT <- sort(DACT_ora)
   SN <- sum(as.numeric(P_sort_DACT <= P_BH))
   ID_BH_DACT <- order(DACT_ora)[1:SN]
@@ -232,7 +232,7 @@ hima_efficient <- function(X, M, Y, COV = NULL,
       beta_se = beta_SE_orc[ID_BH_DACT],
       IDE = IDE,
       rimp = abs(IDE) / sum(abs(IDE)) * 100,
-      pmax = DACT_ora[ID_BH_DACT], check.names = FALSE
+      pmax = DACT_ora[ID_BH_DACT], row.names = NULL
     )
     if (verbose) message(paste0("        ", length(ID_BH_DACT), " significant mediator(s) identified."))
   } else {
@@ -240,6 +240,8 @@ hima_efficient <- function(X, M, Y, COV = NULL,
     out_result <- NULL
   }
 
-  message("Done!", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Done!", "     (", format(Sys.time(), "%X"), ")")
+
+  doParallel::stopImplicitCluster()
   return(out_result)
 }

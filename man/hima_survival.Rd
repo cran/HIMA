@@ -13,7 +13,9 @@ hima_survival(
   topN = NULL,
   scale = TRUE,
   FDRcut = 0.05,
-  verbose = FALSE
+  verbose = FALSE,
+  parallel = FALSE,
+  ncore = 1
 )
 }
 \arguments{
@@ -37,6 +39,10 @@ If the sample size is greater than topN (pre-specified or calculated), all media
 \item{FDRcut}{HDMT pointwise FDR cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
+
+\item{parallel}{logical. Enable parallel computing feature? Default = \code{FALSE}.}
+
+\item{ncore}{number of cores to run parallel computing Valid when \code{parallel = TRUE}.}
 }
 \value{
 A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}).
@@ -58,14 +64,16 @@ A data.frame containing mediation testing results of significant mediators (FDR 
 \dontrun{
 # Note: In the following example, M1, M2, and M3 are true mediators.
 
-head(SurvivalData$PhenoData)
+data(SurvivalData)
+pheno_data <- SurvivalData$PhenoData
+mediator_data <- SurvivalData$Mediator
 
 hima_survival.fit <- hima_survival(
-  X = SurvivalData$PhenoData$Treatment,
-  M = SurvivalData$Mediator,
-  OT = SurvivalData$PhenoData$Time,
-  status = SurvivalData$PhenoData$Status,
-  COV = SurvivalData$PhenoData[, c("Sex", "Age")],
+  X = pheno_data$Treatment,
+  OT = pheno_data$Time,
+  status = pheno_data$Status,
+  M = mediator_data,
+  COV = pheno_data[, c("Sex", "Age")],
   scale = FALSE, # Disabled only for simulation data
   FDRcut = 0.05,
   verbose = TRUE

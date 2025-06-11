@@ -14,11 +14,11 @@ hima_classic(
   M.type = c("gaussian", "negbin"),
   penalty = c("MCP", "SCAD", "lasso"),
   topN = NULL,
-  parallel = FALSE,
-  ncore = 1,
   scale = TRUE,
   Bonfcut = 0.05,
   verbose = FALSE,
+  parallel = FALSE,
+  ncore = 1,
   ...
 )
 }
@@ -51,16 +51,15 @@ Default = \code{NULL}. If \code{NULL}, \code{topN} will be either \code{ceiling(
 or \code{ceiling(n/(2*log(n)))} for binary outcome, where \code{n} is the sample size. If the sample size is greater
 than topN (pre-specified or calculated), all mediators will be included in the test (i.e. low-dimensional scenario).}
 
-\item{parallel}{logical. Enable parallel computing feature? Default = \code{FALSE}.}
-
-\item{ncore}{number of cores to run parallel computing Valid when \code{parallel = TRUE}.
-By default max number of cores available in the machine will be utilized.}
-
 \item{scale}{logical. Should the function scale the data? Default = \code{TRUE}.}
 
 \item{Bonfcut}{Bonferroni-corrected p value cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
+
+\item{parallel}{logical. Enable parallel computing feature? Default = \code{FALSE}.}
+
+\item{ncore}{number of cores to run parallel computing Valid when \code{parallel = TRUE}.}
 
 \item{...}{other arguments passed to \code{ncvreg}.}
 }
@@ -84,13 +83,15 @@ A data.frame containing mediation testing results of selected mediators.
 
 # When Y is continuous and normally distributed
 # Example 1 (continuous outcome):
-head(ContinuousOutcome$PhenoData)
+data(ContinuousOutcome)
+pheno_data <- ContinuousOutcome$PhenoData
+mediator_data <- ContinuousOutcome$Mediator
 
 hima.fit <- hima_classic(
-  X = ContinuousOutcome$PhenoData$Treatment,
-  Y = ContinuousOutcome$PhenoData$Outcome,
-  M = ContinuousOutcome$Mediator,
-  COV.XM = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
+  X = pheno_data$Treatment,
+  Y = pheno_data$Outcome,
+  M = mediator_data,
+  COV.XM = pheno_data[, c("Sex", "Age")],
   Y.type = "continuous",
   scale = FALSE, # Disabled only for simulation data
   verbose = TRUE
@@ -99,13 +100,15 @@ hima.fit
 
 # When Y is binary
 # Example 2 (binary outcome):
-head(BinaryOutcome$PhenoData)
+data(BinaryOutcome$PhenoData)
+pheno_data <- BinaryOutcome$PhenoData
+mediator_data <- BinaryOutcome$Mediator
 
 hima.logistic.fit <- hima_classic(
-  X = BinaryOutcome$PhenoData$Treatment,
-  Y = BinaryOutcome$PhenoData$Disease,
-  M = BinaryOutcome$Mediator,
-  COV.XM = BinaryOutcome$PhenoData[, c("Sex", "Age")],
+  X = pheno_data$Treatment,
+  Y = pheno_data$Disease,
+  M = mediator_data,
+  COV.XM = pheno_data[, c("Sex", "Age")],
   Y.type = "binary",
   scale = FALSE, # Disabled only for simulation data
   verbose = TRUE

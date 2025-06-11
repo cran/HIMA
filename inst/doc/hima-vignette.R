@@ -23,17 +23,23 @@ library(HIMA)
 #   verbose = FALSE   # Display progress messages (default: FALSE)
 # )
 
+## ----parallel-----------------------------------------------------------------
+# hima(..., parallel = TRUE, ncore = 4)
+
 ## ----load-HIMA----------------------------------------------------------------
 # library(HIMA)
 
 ## ----continuous-example-------------------------------------------------------
 # data(ContinuousOutcome)
+# pheno_data <- ContinuousOutcome$PhenoData
+# mediator_data <- ContinuousOutcome$Mediator
+# 
 # hima_continuous.fit <- hima(
 #   Outcome ~ Treatment + Sex + Age,
-#   data.pheno = ContinuousOutcome$PhenoData,
-#   data.M = ContinuousOutcome$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "gaussian",
-#   penalty = "MCP",
+#   penalty = "DBlasso",
 #   scale = FALSE # Demo data is already standardized
 # )
 # summary(hima_continuous.fit, desc=TRUE)
@@ -42,11 +48,11 @@ library(HIMA)
 ## ----efficient-example--------------------------------------------------------
 # hima_efficient.fit <- hima(
 #   Outcome ~ Treatment + Sex + Age,
-#   data.pheno = ContinuousOutcome$PhenoData,
-#   data.M = ContinuousOutcome$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "gaussian",
 #   efficient = TRUE,
-#   penalty = "lasso",
+#   penalty = "MCP",
 #   scale = FALSE # Demo data is already standardized
 # )
 # summary(hima_efficient.fit, desc=TRUE)
@@ -54,10 +60,13 @@ library(HIMA)
 
 ## ----binary-example-----------------------------------------------------------
 # data(BinaryOutcome)
+# pheno_data <- BinaryOutcome$PhenoData
+# mediator_data <- BinaryOutcome$Mediator
+# 
 # hima_binary.fit <- hima(
 #   Disease ~ Treatment + Sex + Age,
-#   data.pheno = BinaryOutcome$PhenoData,
-#   data.M = BinaryOutcome$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "gaussian",
 #   penalty = "MCP",
 #   scale = FALSE # Demo data is already standardized
@@ -66,10 +75,13 @@ library(HIMA)
 
 ## ----survival-example---------------------------------------------------------
 # data(SurvivalData)
+# pheno_data <- SurvivalData$PhenoData
+# mediator_data <- SurvivalData$Mediator
+# 
 # hima_survival.fit <- hima(
 #   Surv(Time, Status) ~ Treatment + Sex + Age,
-#   data.pheno = SurvivalData$PhenoData,
-#   data.M = SurvivalData$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "gaussian",
 #   penalty = "DBlasso",
 #   scale = FALSE # Demo data is already standardized
@@ -78,10 +90,13 @@ library(HIMA)
 
 ## ----microbiome-example-------------------------------------------------------
 # data(MicrobiomeData)
+# pheno_data <- MicrobiomeData$PhenoData
+# mediator_data <- MicrobiomeData$Mediator
+# 
 # hima_microbiome.fit <- hima(
 #   Outcome ~ Treatment + Sex + Age,
-#   data.pheno = MicrobiomeData$PhenoData,
-#   data.M = MicrobiomeData$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "compositional",
 #   penalty = "DBlasso"
 # )
@@ -89,10 +104,13 @@ library(HIMA)
 
 ## ----quantile-example---------------------------------------------------------
 # data(QuantileData)
+# pheno_data <- QuantileData$PhenoData
+# mediator_data <- QuantileData$Mediator
+# 
 # hima_quantile.fit <- hima(
 #   Outcome ~ Treatment + Sex + Age,
-#   data.pheno = QuantileData$PhenoData,
-#   data.M = QuantileData$Mediator,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
 #   mediator.type = "gaussian",
 #   quantile = TRUE,
 #   penalty = "MCP",

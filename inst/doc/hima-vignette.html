@@ -12,7 +12,7 @@
 
 <meta name="author" content="The HIMA Development Team" />
 
-<meta name="date" content="2025-01-27" />
+<meta name="date" content="2025-06-11" />
 
 <title>High-Dimensional Mediation Analysis</title>
 
@@ -341,7 +341,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h1 class="title toc-ignore">High-Dimensional Mediation Analysis</h1>
 <h3 class="subtitle">A Guide to Using the HIMA Package</h3>
 <h4 class="author">The HIMA Development Team</h4>
-<h4 class="date">2025-01-27</h4>
+<h4 class="date">2025-06-11</h4>
 
 
 <div id="TOC">
@@ -361,6 +361,11 @@ Interface</a></li>
 Mediator Data (<code>data.M</code>)</a></li>
 <li><a href="#about-data-scaling" id="toc-about-data-scaling">4. About
 data scaling</a></li>
+<li><a href="#parallel-computing-support" id="toc-parallel-computing-support">Parallel Computing Support</a>
+<ul>
+<li><a href="#enabling-parallel-computing" id="toc-enabling-parallel-computing">Enabling Parallel
+Computing</a></li>
+</ul></li>
 </ul></li>
 <li><a href="#applications-and-examples" id="toc-applications-and-examples">Applications and Examples</a>
 <ul>
@@ -515,30 +520,48 @@ prevent introducing biases or altering the original data structure.</p>
 preprocess the mediators by scaling them to have a mean of zero and a
 variance of one prior to generating the outcome variables.</p>
 </div>
+<div id="parallel-computing-support" class="section level2">
+<h2>Parallel Computing Support</h2>
+<p>The <code>hima()</code> function supports <strong>parallel
+computing</strong> to speed up high-dimensional mediation analysis,
+especially when dealing with a large number of mediators.</p>
+<div id="enabling-parallel-computing" class="section level3">
+<h3>Enabling Parallel Computing</h3>
+<p>To enable parallel computing, simply set <code>parallel = TRUE</code>
+and specify the number of CPU cores to use via the <code>ncore</code>
+argument:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">hima</span>(..., <span class="at">parallel =</span> <span class="cn">TRUE</span>, <span class="at">ncore =</span> <span class="dv">4</span>)</span></code></pre></div>
+</div>
+</div>
 </div>
 <div id="applications-and-examples" class="section level1">
 <h1>Applications and Examples</h1>
 <div id="load-the-hima-package" class="section level2">
 <h2>Load the <code>HIMA</code> Package</h2>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(HIMA)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(HIMA)</span></code></pre></div>
 </div>
 <div id="continuous-outcome-analysis" class="section level2">
 <h2>Continuous Outcome Analysis</h2>
 <p>When analyzing continuous and normally distributed outcomes and
 mediators, we can use the following code snippet:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">data</span>(ContinuousOutcome)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>hima_continuous.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">data.pheno =</span> ContinuousOutcome<span class="sc">$</span>PhenoData,</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">data.M =</span> ContinuousOutcome<span class="sc">$</span>Mediator,</span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>)</span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="fu">summary</span>(hima_continuous.fit, <span class="at">desc=</span><span class="cn">TRUE</span>) </span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co"># `desc = TRUE` option to show the description of the output results</span></span></code></pre></div>
-<p>The <code>penaly</code> can be set to <code>DBlasso</code> which may
-help detect more mediators with weaker signals.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">data</span>(ContinuousOutcome)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>pheno_data <span class="ot">&lt;-</span> ContinuousOutcome<span class="sc">$</span>PhenoData</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>mediator_data <span class="ot">&lt;-</span> ContinuousOutcome<span class="sc">$</span>Mediator</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>hima_continuous.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;DBlasso&quot;</span>,</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>)</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="fu">summary</span>(hima_continuous.fit, <span class="at">desc=</span><span class="cn">TRUE</span>) </span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co"># `desc = TRUE` option to show the description of the output results</span></span></code></pre></div>
+<p><code>penalty = &quot;DBlasso&quot;</code> is particularly effective at
+identifying mediators with weaker signals compared to
+<code>penalty = &quot;MCP&quot;</code>. However, using <code>DBlasso</code>
+requires more computational time.</p>
 </div>
 <div id="efficient-hima" class="section level2">
 <h2>Efficient HIMA</h2>
@@ -547,17 +570,17 @@ efficient HIMA method can be activated with the
 <code>efficient = TRUE</code> option (penalty should be <code>MCP</code>
 for the best results). This method may also provide greater statistical
 power to detect mediators with weaker signals.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>hima_efficient.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">data.pheno =</span> ContinuousOutcome<span class="sc">$</span>PhenoData,</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">data.M =</span> ContinuousOutcome<span class="sc">$</span>Mediator,</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">efficient =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;lasso&quot;</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>)</span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="fu">summary</span>(hima_efficient.fit, <span class="at">desc=</span><span class="cn">TRUE</span>) </span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="co"># Note that the efficient HIMA is controlling FDR</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>hima_efficient.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">efficient =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="fu">summary</span>(hima_efficient.fit, <span class="at">desc=</span><span class="cn">TRUE</span>) </span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># Note that the efficient HIMA is controlling FDR</span></span></code></pre></div>
 <p>It is recommended to try different <code>penalty</code> options and
 <code>efficient</code> option to find the best one for your data.</p>
 </div>
@@ -565,65 +588,77 @@ power to detect mediators with weaker signals.</p>
 <h2>Binary Outcome Analysis</h2>
 <p>The package can handle binary outcomes based on logistic
 regression:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">data</span>(BinaryOutcome)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>hima_binary.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  Disease <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">data.pheno =</span> BinaryOutcome<span class="sc">$</span>PhenoData,</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">data.M =</span> BinaryOutcome<span class="sc">$</span>Mediator,</span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>)</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="fu">summary</span>(hima_binary.fit)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">data</span>(BinaryOutcome)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>pheno_data <span class="ot">&lt;-</span> BinaryOutcome<span class="sc">$</span>PhenoData</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>mediator_data <span class="ot">&lt;-</span> BinaryOutcome<span class="sc">$</span>Mediator</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>hima_binary.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  Disease <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>)</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a><span class="fu">summary</span>(hima_binary.fit)</span></code></pre></div>
 </div>
 <div id="survival-outcome-analysis" class="section level2">
 <h2>Survival Outcome Analysis</h2>
 <p>For survival data, <code>HIMA</code> incorporates a Cox proportional
 hazards approach. Here is an example of survival outcome analysis using
 <code>HIMA</code>:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">data</span>(SurvivalData)</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>hima_survival.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  <span class="fu">Surv</span>(Time, Status) <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  <span class="at">data.pheno =</span> SurvivalData<span class="sc">$</span>PhenoData,</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="at">data.M =</span> SurvivalData<span class="sc">$</span>Mediator,</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;DBlasso&quot;</span>,</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>)</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="fu">summary</span>(hima_survival.fit)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">data</span>(SurvivalData)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>pheno_data <span class="ot">&lt;-</span> SurvivalData<span class="sc">$</span>PhenoData</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>mediator_data <span class="ot">&lt;-</span> SurvivalData<span class="sc">$</span>Mediator</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>hima_survival.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="fu">Surv</span>(Time, Status) <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;DBlasso&quot;</span>,</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>)</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="fu">summary</span>(hima_survival.fit)</span></code></pre></div>
 </div>
 <div id="microbiome-mediation-analysis" class="section level2">
 <h2>Microbiome Mediation Analysis</h2>
 <p>For compositional microbiome data, <code>HIMA</code> employs
 isometric Log-Ratio transformations. Here is an example of microbiome
 mediation analysis using <code>HIMA</code>:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">data</span>(MicrobiomeData)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>hima_microbiome.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">data.pheno =</span> MicrobiomeData<span class="sc">$</span>PhenoData,</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="at">data.M =</span> MicrobiomeData<span class="sc">$</span>Mediator,</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;compositional&quot;</span>,</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;DBlasso&quot;</span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>)</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="fu">summary</span>(hima_microbiome.fit)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">data</span>(MicrobiomeData)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>pheno_data <span class="ot">&lt;-</span> MicrobiomeData<span class="sc">$</span>PhenoData</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>mediator_data <span class="ot">&lt;-</span> MicrobiomeData<span class="sc">$</span>Mediator</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>hima_microbiome.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;compositional&quot;</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;DBlasso&quot;</span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>)</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="fu">summary</span>(hima_microbiome.fit)</span></code></pre></div>
 </div>
 <div id="quantile-mediation-analysis" class="section level2">
 <h2>Quantile Mediation Analysis</h2>
 <p>Perform quantile mediation analysis using the
 <code>quantile = TRUE</code> option and specify <code>tau</code> for
 desired quantile(s):</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">data</span>(QuantileData)</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>hima_quantile.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">data.pheno =</span> QuantileData<span class="sc">$</span>PhenoData,</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">data.M =</span> QuantileData<span class="sc">$</span>Mediator,</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">tau =</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.7</span>),</span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>)</span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="fu">summary</span>(hima_quantile.fit)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">data</span>(QuantileData)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>pheno_data <span class="ot">&lt;-</span> QuantileData<span class="sc">$</span>PhenoData</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>mediator_data <span class="ot">&lt;-</span> QuantileData<span class="sc">$</span>Mediator</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>hima_quantile.fit <span class="ot">&lt;-</span> <span class="fu">hima</span>(</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  Outcome <span class="sc">~</span> Treatment <span class="sc">+</span> Sex <span class="sc">+</span> Age,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  <span class="at">data.pheno =</span> pheno_data,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="at">data.M =</span> mediator_data,</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="at">mediator.type =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">quantile =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>  <span class="at">penalty =</span> <span class="st">&quot;MCP&quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  <span class="at">tau =</span> <span class="fu">c</span>(<span class="fl">0.3</span>, <span class="fl">0.5</span>, <span class="fl">0.7</span>),</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  <span class="at">scale =</span> <span class="cn">FALSE</span> <span class="co"># Demo data is already standardized</span></span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>)</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="fu">summary</span>(hima_quantile.fit)</span></code></pre></div>
 </div>
 </div>
 

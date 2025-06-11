@@ -12,7 +12,9 @@ hima_dblasso(
   topN = NULL,
   scale = TRUE,
   FDRcut = 0.05,
-  verbose = FALSE
+  verbose = FALSE,
+  parallel = FALSE,
+  ncore = 1
 )
 }
 \arguments{
@@ -34,6 +36,10 @@ mediators will be included in the test (i.e. low-dimensional scenario).}
 \item{FDRcut}{HDMT pointwise FDR cutoff applied to select significant mediators. Default = \code{0.05}.}
 
 \item{verbose}{logical. Should the function be verbose? Default = \code{FALSE}.}
+
+\item{parallel}{logical. Enable parallel computing feature? Default = \code{FALSE}.}
+
+\item{ncore}{number of cores to run parallel computing Valid when \code{parallel = TRUE}.}
 }
 \value{
 A data.frame containing mediation testing results of significant mediators (FDR <\code{FDRcut}).
@@ -57,13 +63,15 @@ A data.frame containing mediation testing results of significant mediators (FDR 
 
 # Y is continuous and normally distributed
 # Example:
-head(ContinuousOutcome$PhenoData)
+data(ContinuousOutcome)
+pheno_data <- ContinuousOutcome$PhenoData
+mediator_data <- ContinuousOutcome$Mediator
 
 hima_dblasso.fit <- hima_dblasso(
-  X = ContinuousOutcome$PhenoData$Treatment,
-  Y = ContinuousOutcome$PhenoData$Outcome,
-  M = ContinuousOutcome$Mediator,
-  COV = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
+  X = pheno_data$Treatment,
+  Y = pheno_data$Outcome,
+  M = mediator_data,
+  COV = pheno_data[, c("Sex", "Age")],
   scale = FALSE, # Disabled only for simulation data
   FDRcut = 0.05,
   verbose = TRUE

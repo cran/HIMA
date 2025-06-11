@@ -7,7 +7,7 @@
 #' HIMA can also handle survival data mediation analysis and perform quantile mediation analysis.
 #'
 #' \tabular{ll}{ Package: \tab HIMA\cr Type: \tab Package\cr
-#' Version: \tab 2.3.0\cr Date: \tab 2025-01-27\cr License: \tab GPL-3\cr }
+#' Version: \tab 2.3.2\cr Date: \tab 2025-06-10\cr License: \tab GPL-3\cr }
 #'
 #' @name HIMA-package
 #'
@@ -66,4 +66,7 @@
 #' @importFrom MASS mvrnorm glm.nb
 #' @importFrom hommel hommel discoveries
 #' @importFrom stats contrasts<-
-NULL
+
+if (getRversion() >= "2.15.1") {
+  utils::globalVariables(c("i", "k"))
+}

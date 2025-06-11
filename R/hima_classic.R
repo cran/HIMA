@@ -22,12 +22,11 @@
 #' Default = \code{NULL}. If \code{NULL}, \code{topN} will be either \code{ceiling(n/log(n))} for continuous outcome,
 #' or \code{ceiling(n/(2*log(n)))} for binary outcome, where \code{n} is the sample size. If the sample size is greater
 #' than topN (pre-specified or calculated), all mediators will be included in the test (i.e. low-dimensional scenario).
-#' @param parallel logical. Enable parallel computing feature? Default = \code{FALSE}.
-#' @param ncore number of cores to run parallel computing Valid when \code{parallel = TRUE}.
-#' By default max number of cores available in the machine will be utilized.
 #' @param scale logical. Should the function scale the data? Default = \code{TRUE}.
 #' @param Bonfcut Bonferroni-corrected p value cutoff applied to select significant mediators. Default = \code{0.05}.
 #' @param verbose logical. Should the function be verbose? Default = \code{FALSE}.
+#' @param parallel logical. Enable parallel computing feature? Default = \code{FALSE}.
+#' @param ncore number of cores to run parallel computing Valid when \code{parallel = TRUE}.
 #' @param ... other arguments passed to \code{ncvreg}.
 #'
 #' @return A data.frame containing mediation testing results of selected mediators.
@@ -51,13 +50,15 @@
 #'
 #' # When Y is continuous and normally distributed
 #' # Example 1 (continuous outcome):
-#' head(ContinuousOutcome$PhenoData)
+#' data(ContinuousOutcome)
+#' pheno_data <- ContinuousOutcome$PhenoData
+#' mediator_data <- ContinuousOutcome$Mediator
 #'
 #' hima.fit <- hima_classic(
-#'   X = ContinuousOutcome$PhenoData$Treatment,
-#'   Y = ContinuousOutcome$PhenoData$Outcome,
-#'   M = ContinuousOutcome$Mediator,
-#'   COV.XM = ContinuousOutcome$PhenoData[, c("Sex", "Age")],
+#'   X = pheno_data$Treatment,
+#'   Y = pheno_data$Outcome,
+#'   M = mediator_data,
+#'   COV.XM = pheno_data[, c("Sex", "Age")],
 #'   Y.type = "continuous",
 #'   scale = FALSE, # Disabled only for simulation data
 #'   verbose = TRUE
@@ -66,13 +67,15 @@
 #'
 #' # When Y is binary
 #' # Example 2 (binary outcome):
-#' head(BinaryOutcome$PhenoData)
+#' data(BinaryOutcome$PhenoData)
+#' pheno_data <- BinaryOutcome$PhenoData
+#' mediator_data <- BinaryOutcome$Mediator
 #'
 #' hima.logistic.fit <- hima_classic(
-#'   X = BinaryOutcome$PhenoData$Treatment,
-#'   Y = BinaryOutcome$PhenoData$Disease,
-#'   M = BinaryOutcome$Mediator,
-#'   COV.XM = BinaryOutcome$PhenoData[, c("Sex", "Age")],
+#'   X = pheno_data$Treatment,
+#'   Y = pheno_data$Disease,
+#'   M = mediator_data,
+#'   COV.XM = pheno_data[, c("Sex", "Age")],
 #'   Y.type = "binary",
 #'   scale = FALSE, # Disabled only for simulation data
 #'   verbose = TRUE
@@ -87,11 +90,11 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
                         M.type = c("gaussian", "negbin"),
                         penalty = c("MCP", "SCAD", "lasso"),
                         topN = NULL,
-                        parallel = FALSE,
-                        ncore = 1,
                         scale = TRUE,
                         Bonfcut = 0.05,
                         verbose = FALSE,
+                        parallel = FALSE,
+                        ncore = 1,
                         ...) {
   
   if (!is.null(COV.XM) && !is.data.frame(COV.XM) && !is.matrix(COV.XM)) {
@@ -111,8 +114,8 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
   M.type <- match.arg(M.type)
   penalty <- match.arg(penalty)
   
-  if (Y.family == "gaussian") message("Running linear HIMA with ", penalty, " penalty...")
-  if (Y.family == "binomial") message("Running logistic HIMA with ", penalty, " penalty...")
+  if (Y.family == "gaussian" && verbose) message("Running linear HIMA with ", penalty, " penalty...")
+  if (Y.family == "binomial" && verbose) message("Running logistic HIMA with ", penalty, " penalty...")
   
   if (parallel && (ncore == 1)) ncore <- parallel::detectCores()
   if (!parallel && (ncore > 1)) parallel <- TRUE
@@ -141,7 +144,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
   #########################################################################
   ################################ STEP 1 #################################
   #########################################################################
-  message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Step 1: Sure Independent Screening ...", "     (", format(Sys.time(), "%X"), ")")
 
   if (Y.type == "binary") {
     # Screen M using X given the limited information provided by Y (binary)
@@ -175,7 +178,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
   #########################################################################
   ################################ STEP 2 #################################
   #########################################################################
-  message("Step 2: Penalized estimate (", penalty, ") ...", "     (", format(Sys.time(), "%X"), ")")
+  if (verbose) message("Step 2: Penalized estimate (", penalty, ") ...", "     (", format(Sys.time(), "%X"), ")")
 
   ## Based on the screening results in step 1. We will find the most influential M on Y.
   if (is.null(COV.MY)) {
@@ -214,7 +217,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     if (Y.type == "binary") {
       ## This has been done in step 1 (when Y is binary, alpha is estimated in M ~ X)
       alpha <- alpha[, ID_test, drop = FALSE]
-      message("    Using alpha estimated in Step 1 ...   (", format(Sys.time(), "%X"), ")")
+      if (verbose) message("    Using alpha estimated in Step 1 ...   (", format(Sys.time(), "%X"), ")")
     } else if (Y.type == "continuous") {
       if (verbose) message("    Estimating alpha (effect of X on M): ", appendLF = FALSE)
       alpha <- himasis(NA, M[, ID_test, drop = FALSE], X, COV.XM,
@@ -229,7 +232,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     #########################################################################
     ################################ STEP 3 #################################
     #########################################################################
-    message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
 
     alpha_est_ID_test <- as.numeric(alpha[1, ]) #  the estimator for alpha
     P_alpha <- alpha[2, ] # the raw p-value for alpha
@@ -275,10 +278,10 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
       beta_hat = beta_est[sig_ind],
       IDE = IDE[sig_ind],
       rimp = (abs(IDE) / sum(abs(IDE)))[sig_ind] * 100,
-      pmax = Pmax[sig_ind], check.names = FALSE
+      pmax = Pmax[sig_ind], row.names = NULL
     )
 
-    message("Done!", "     (", format(Sys.time(), "%X"), ")")
+    if (verbose) message("Done!", "     (", format(Sys.time(), "%X"), ")")
 
     doParallel::stopImplicitCluster()
 
