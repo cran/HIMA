@@ -11,7 +11,7 @@ checkParallel <- function(program.name, parallel, ncore, verbose) {
     }
     if (verbose) {
       message(
-        "    Running ", program.name, " with ", ncore, " cores in parallel...   (",
+        "Running ", program.name, " with ", ncore, " cores in parallel...   (",
         format(Sys.time(), "%X"), ")"
       )
     }
@@ -19,7 +19,7 @@ checkParallel <- function(program.name, parallel, ncore, verbose) {
   } else {
     if (verbose) {
       message(
-        "    Running ", program.name, " with single core...   (",
+        "Running ", program.name, " with single core...   (",
         format(Sys.time(), "%X"), ")"
       )
     }
@@ -77,14 +77,14 @@ himasis <- function(Y, M, X, COV, glm.family, modelstatement,
   X <- data.frame(model.matrix(~., X))[, -1]
 
   if (is.null(COV)) {
-    if (verbose) message("    No covariate is adjusted")
+    if (verbose) message("No covariate is adjusted")
     datarun <- data.frame(Y = Y, Mone = NA, X = X)
     modelstatement <- modelstatement
   } else {
     COV <- data.frame(COV)
     COV <- data.frame(model.matrix(~., COV))[, -1, drop = FALSE]
     conf.names <- colnames(COV)
-    if (verbose) message("    Adjusting for covariate(s): ", paste0(conf.names, collapse = ", "))
+    if (verbose) message("Adjusting for covariate(s): ", paste0(conf.names, collapse = ", "))
     datarun <- data.frame(Y = Y, Mone = NA, X = X, COV)
     modelstatement <- eval(parse(text = (paste0(
       modelstatement, "+",
@@ -124,16 +124,43 @@ himasis <- function(Y, M, X, COV, glm.family, modelstatement,
 # Helper function to process variables
 
 process_var <- function(var, scale) {
-  if (!is.null(var)) {
-    if (scale) {
-      return(scale(var))
-    } else {
-      return(as.matrix(var))
+  if (is.null(var)) return(NULL)
+  
+  # Enforce numeric input for all downstream HIMA internal functions
+  if (is.data.frame(var)) {
+    # Check for any non-numeric columns in data.frame
+    non_numeric_cols <- !vapply(var, is.numeric, logical(1))
+    if (any(non_numeric_cols)) {
+      bad_cols <- names(var)[non_numeric_cols]
+      stop(
+        sprintf(
+          "Non-numeric variable(s) detected: %s.\nPlease convert all factor/character variables to numeric or dummy variables before calling this function.",
+          paste(bad_cols, collapse = ", ")
+        )
+      )
     }
+    # At this point, all columns are numeric
+    var_num <- as.matrix(var)
   } else {
-    return(NULL)
+    # For vectors/matrices, require numeric as well
+    if (!is.numeric(var)) {
+      stop(
+        "Non-numeric input detected.\nPlease convert all factor/character variables to numeric or dummy variables before calling this function."
+      )
+    }
+    var_num <- as.matrix(var)
+  }
+  
+  # Now safely handle scaling
+  if (scale) {
+    # scale() will return a numeric matrix
+    return(scale(var_num))
+  } else {
+    return(var_num)
   }
 }
+
+
 
 
 

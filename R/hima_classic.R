@@ -67,7 +67,7 @@
 #'
 #' # When Y is binary
 #' # Example 2 (binary outcome):
-#' data(BinaryOutcome$PhenoData)
+#' data(BinaryOutcome)
 #' pheno_data <- BinaryOutcome$PhenoData
 #' mediator_data <- BinaryOutcome$Mediator
 #'
@@ -148,7 +148,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
 
   if (Y.type == "binary") {
     # Screen M using X given the limited information provided by Y (binary)
-    if (verbose) message("    Screening M using the association between X (independent variable) and \nM (dependent variable): ", appendLF = FALSE)
+    if (verbose) message("    Screening M using the association between X (independent variable) and M (dependent variable): ", appendLF = FALSE)
     alpha <- SIS_Results <- himasis(NA, M, X, COV.XM,
       glm.family = M.type, modelstatement = "Mone ~ X",
       parallel = parallel, ncore = ncore, verbose, tag = paste0("Sure Independent Screening (M ~ X + COV.XM, family: ", M.type, ")")
@@ -156,7 +156,7 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     SIS_Pvalue <- SIS_Results[2, ]
   } else if (Y.type == "continuous") {
     # Screen M using Y (continuous)
-    if (verbose) message("    Screening M using the association between M (independent variable) and \nY (dependent variable): ", appendLF = FALSE)
+    if (verbose) message("    Screening M using the association between M (independent variable) and Y (dependent variable): ", appendLF = FALSE)
     SIS_Results <- himasis(Y, M, X, COV.MY,
       glm.family = "gaussian", modelstatement = "Y ~ Mone + X",
       parallel = parallel, ncore = ncore, verbose, tag = paste0("Sure Independent Screening (Y ~ M + X + COV.MY, family: ", Y.type, ")")
@@ -259,18 +259,6 @@ hima_classic <- function(X, M, Y, COV.XM = NULL, COV.MY = COV.XM,
     ## Bonferroni
     Pmax_Bonf <- Pmax * length(ID_test)
     sig_ind <- which(Pmax_Bonf < Bonfcut)
-
-    # FDRA <- rbind(P_fdr_beta, P_fdr_alpha)
-    # FDR <- apply(FDRA, 2, max)
-
-    # Total effect
-    # if(is.null(COV.MY)) {
-    #   YX <- data.frame(Y = Y, X = X)
-    # } else {
-    #   YX <- data.frame(Y = Y, X = X, COV.MY)
-    # }
-    #
-    # gamma_est <- coef(glm(Y ~ ., family = Y.type, data = YX))[2]
 
     results <- data.frame(
       Index = M_ID_name[ID_test][sig_ind],

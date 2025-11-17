@@ -16,6 +16,8 @@ library(HIMA)
 #   penalty = "DBlasso",  # Penalty method: "DBlasso", "MCP", "SCAD", or "lasso"
 #   quantile = FALSE, # Use quantile mediation analysis (default: FALSE)
 #   efficient = FALSE,# Use efficient mediation analysis (default: FALSE)
+#   longitudinal = FALSE, # Enable longitudinal-survival mediation (requires Surv(tstart, tstop, status))
+#   id.var = NULL,    # Subject ID column in data.pheno when longitudinal = TRUE
 #   scale = TRUE,     # Scale data (default: TRUE)
 #   sigcut = 0.05,    # Significance cutoff for mediator selection
 #   contrast = NULL,  # Named list of contrasts for factor covariate(s)
@@ -87,6 +89,23 @@ library(HIMA)
 #   scale = FALSE # Demo data is already standardized
 # )
 # summary(hima_survival.fit)
+
+## ----survival-longitudinal-example--------------------------------------------
+# data(SurvivalLongData)
+# pheno_data <- SurvivalLongData$PhenoData
+# mediator_data <- SurvivalLongData$Mediator
+# 
+# hima_survival_long.fit <- hima(
+#   Surv(Tstart, Tstop, Status) ~ Treatment + Sex + Age,
+#   data.pheno = pheno_data,
+#   data.M = mediator_data,
+#   mediator.type = "gaussian",
+#   longitudinal = TRUE,
+#   id.var = "ID",
+#   penalty = "lasso",
+#   scale = FALSE # Demo data is already standardized
+# )
+# summary(hima_survival_long.fit)
 
 ## ----microbiome-example-------------------------------------------------------
 # data(MicrobiomeData)

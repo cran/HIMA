@@ -63,6 +63,18 @@ hima_dblasso <- function(X, M, Y, COV = NULL,
                         verbose = FALSE,
                         parallel = FALSE,
                         ncore = 1) {
+  
+  ## Outcome checks: only continuous Y is allowed for now
+  if (is.factor(Y) && nlevels(Y) == 2L ||
+      is.numeric(Y) && all(stats::na.omit(Y) %in% c(0, 1))) {
+    stop("hima_dblasso() only supports continuous outcomes. ",
+         "For binary outcomes, please use other penalties (e.g., 'lasso' or 'MCP') in hima().")
+  }
+  
+  if (!is.numeric(Y)) {
+    stop("Y must be numeric for hima_dblasso().")
+  }
+  
   n <- nrow(M)
   p <- ncol(M)
 
@@ -144,7 +156,7 @@ hima_dblasso <- function(X, M, Y, COV = NULL,
   DLASSO_fit <- suppressMessages(hdi::lasso.proj(x = MZX_SIS, y = Y, family = "gaussian"))
   beta_DLASSO_SIS_est <- DLASSO_fit$bhat[1:d]
   beta_DLASSO_SIS_SE <- DLASSO_fit$se
-  P_beta_SIS <- t(DLASSO_fit$pval[1:d])
+  P_beta_SIS  <- as.numeric(DLASSO_fit$pval[1:d])
 
   ################### Estimate alpha ################
   alpha_results <- foreach(i = seq_len(d), .combine = rbind) %dopar% {
@@ -164,7 +176,7 @@ hima_dblasso <- function(X, M, Y, COV = NULL,
   #########################################################################
   if (verbose) message("Step 3: Joint significance test ...", "     (", format(Sys.time(), "%X"), ")")
 
-  PA <- cbind(t(P_alpha_SIS), (t(P_beta_SIS)))
+  PA <- cbind(P_alpha_SIS, P_beta_SIS)
   P_value <- apply(PA, 1, max) # The joint p-values for SIS variable
 
   N0 <- dim(PA)[1] * dim(PA)[2]
@@ -196,15 +208,6 @@ hima_dblasso <- function(X, M, Y, COV = NULL,
 
   # Indirect effect
   IDE <- beta_hat_est * alpha_hat_est # mediation(indirect) effect
-
-  # # Total effect
-  # if(is.null(COV)) {
-  #   YX <- data.frame(Y = Y, X = X)
-  # } else {
-  #   YX <- data.frame(Y = Y, X = X, COV)
-  # }
-  #
-  # gamma_est <- coef(glm(Y ~ ., family = "gaussian", data = YX))[2]
 
   if (length(ID_fdr) > 0) {
     results <- data.frame(
